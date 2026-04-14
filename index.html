@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manny's Trading & Voice Studio</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080810;--surface:#0e0e1c;--card:#131325;--card2:#181830;
+  --border:#1e1e3a;--border2:#2a2a4a;
+  --purple:#7c3aed;--purple-lt:#a265f5;--purple-dim:rgba(124,58,237,.12);
+  --green:#00e676;--green-dim:rgba(0,230,118,.1);--green-glow:rgba(0,230,118,.25);
+  --red:#ff4060;--red-dim:rgba(255,64,96,.1);
+  --yellow:#f59e0b;--yellow-dim:rgba(245,158,11,.1);
+  --cyan:#00d4ff;--cyan-dim:rgba(0,212,255,.1);
+  --text:#e0e0f4;--muted:#5a5a80;--muted2:#3a3a5a;
+  --input-bg:#0a0a18;
+  --ticker-h:40px;--header-h:58px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;min-height:100vh;overflow-x:hidden}
+
+/* ── Ticker Bar ── */
+.ticker{height:var(--ticker-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;overflow:hidden;position:relative}
+.ticker::before,.ticker::after{content:'';position:absolute;top:0;bottom:0;width:60px;z-index:2;pointer-events:none}
+.ticker::before{left:0;background:linear-gradient(90deg,var(--surface),transparent)}
+.ticker::after{right:0;background:linear-gradient(270deg,var(--surface),transparent)}
+.ticker-track{display:flex;gap:0;animation:ticker-scroll 28s linear infinite;white-space:nowrap}
+.ticker-track:hover{animation-play-state:paused}
+@keyframes ticker-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.tick-item{display:inline-flex;align-items:center;gap:8px;padding:0 24px;border-right:1px solid var(--border2);font-size:12px;font-family:'SF Mono','Fira Code',monospace}
+.tick-sym{color:var(--muted);font-weight:600;letter-spacing:.04em}
+.tick-price{color:var(--text);font-weight:700}
+.tick-chg.pos{color:var(--green)}.tick-chg.neg{color:var(--red)}
+
+/* ── Header ── */
+.header{height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--purple),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;letter-spacing:-1px}
+.logo-text{font-size:15px;font-weight:700;color:var(--text)}
+.logo-sub{font-size:11px;color:var(--muted);font-weight:400}
+.header-right{display:flex;align-items:center;gap:16px}
+.session-badge{display:flex;align-items:center;gap:6px;background:var(--green-dim);border:1px solid var(--green);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--green);font-weight:600}
+.session-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse-green 2s ease-in-out infinite}
+@keyframes pulse-green{0%,100%{opacity:1;box-shadow:0 0 0 0 var(--green-glow)}50%{opacity:.7;box-shadow:0 0 0 4px transparent}}
+.clock{font-family:'SF Mono','Fira Code',monospace;font-size:13px;color:var(--muted);font-weight:600}
+.api-bar{display:flex;align-items:center;gap:8px}
+.api-input{background:var(--input-bg);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;color:var(--muted);font-size:11px;font-family:monospace;width:200px}
+.btn-connect{background:var(--purple);border:none;border-radius:6px;color:#fff;font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;transition:all .2s}
+.btn-connect:hover{background:var(--purple-lt)}
+.badge-voices{background:var(--green-dim);border:1px solid var(--green);border-radius:20px;padding:2px 8px;font-size:10px;color:var(--green);font-weight:700;display:none}
+
+/* ── Main Layout ── */
+.main{display:grid;grid-template-columns:380px 1fr;gap:0;height:calc(100vh - var(--ticker-h) - var(--header-h));overflow:hidden}
+
+/* ── Left: Trading Panel ── */
+.trading-panel{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;gap:0}
+.trading-panel::-webkit-scrollbar{width:4px}
+.trading-panel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.t-section{padding:16px 18px;border-bottom:1px solid var(--border)}
+.t-section-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.t-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Market Context */
+.mkt-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mkt-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;position:relative;overflow:hidden}
+.mkt-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.mkt-card.pos::before{background:var(--green)}
+.mkt-card.neg::before{background:var(--red)}
+.mkt-card.neut::before{background:var(--muted2)}
+.mkt-sym{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
+.mkt-price{font-family:'SF Mono','Fira Code',monospace;font-size:16px;font-weight:700;color:var(--text);line-height:1}
+.mkt-chg{font-size:11px;font-weight:600;margin-top:3px}
+.mkt-chg.pos{color:var(--green)}.mkt-chg.neg{color:var(--red)}
+
+/* Stat Row */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.stat-label{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.stat-val{font-family:'SF Mono','Fira Code',monospace;font-size:20px;font-weight:800;line-height:1}
+.stat-val.green{color:var(--green)}.stat-val.red{color:var(--red)}.stat-val.muted{color:var(--muted)}
+.stat-sub{font-size:10px;color:var(--muted);margin-top:3px}
+
+/* Discipline */
+.disc-bar-wrap{background:var(--card2);border-radius:4px;height:6px;overflow:hidden;margin:8px 0 4px}
+.disc-bar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--purple),var(--cyan));transition:width .6s ease}
+.disc-row{display:flex;justify-content:space-between;align-items:center}
+.disc-grade{font-family:'SF Mono','Fira Code',monospace;font-size:28px;font-weight:900;color:var(--muted)}
+.disc-meta{text-align:right}
+.disc-score{font-size:13px;color:var(--muted)}
+
+/* Reminders */
+.reminder-list{display:flex;flex-direction:column;gap:6px}
+.reminder-item{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--muted);line-height:1.4}
+.reminder-item::before{content:'▸';color:var(--purple-lt);flex-shrink:0;margin-top:1px}
+
+/* Bias Notes */
+.bias-list{display:flex;flex-direction:column;gap:6px}
+.bias-item{display:flex;align-items:flex-start;gap:8px;background:var(--card);border-left:2px solid var(--cyan);border-radius:0 6px 6px 0;padding:8px 10px;font-size:12px;color:var(--text);line-height:1.4}
+
+/* Trades available pill */
+.trades-pill{display:inline-flex;align-items:center;gap:6px;background:var(--yellow-dim);border:1px solid var(--yellow);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--yellow);font-weight:600}
+
+/* Refresh button */
+.btn-refresh{background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:11px;padding:4px 10px;cursor:pointer;transition:all .2s;margin-left:auto;display:flex;align-items:center;gap:4px}
+.btn-refresh:hover{border-color:var(--purple);color:var(--purple-lt)}
+
+/* ── Right: ElevenLabs Panel ── */
+.el-panel{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+
+/* Tabs */
+.el-tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;gap:2px;flex-shrink:0}
+.el-tab{background:none;border:none;padding:14px 16px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.el-tab:hover{color:var(--text)}
+.el-tab.active{color:var(--purple-lt);border-bottom-color:var(--purple)}
+
+.el-content{flex:1;overflow-y:auto;padding:20px}
+.el-content::-webkit-scrollbar{width:4px}
+.el-content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px}
+.card:last-child{margin-bottom:0}
+.field-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block}
+
+/* Inputs */
+input[type=text],textarea,select{width:100%;background:var(--input-bg);border:1px solid var(--border2);border-radius:8px;padding:9px 13px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border .2s}
+input[type=text]:focus,textarea:focus,select:focus{border-color:var(--purple)}
+select{cursor:pointer}
+textarea{resize:vertical;min-height:80px}
+
+/* Buttons */
+.btn{border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:linear-gradient(135deg,var(--purple),#5b21b6);color:#fff}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.5;transform:none;cursor:not-allowed}
+.btn-secondary{background:var(--card2);border:1px solid var(--border2);color:var(--text)}
+.btn-secondary:hover{border-color:var(--purple);color:var(--purple-lt)}
+.btn-danger{background:var(--red-dim);border:1px solid var(--red);color:var(--red)}
+.btn-danger:hover{background:var(--red);color:#fff}
+.btn.recording{background:var(--red)!important;border-color:var(--red)!important;color:#fff!important;animation:pulse-rec 1.5s ease-in-out infinite}
+@keyframes pulse-rec{0%,100%{box-shadow:0 0 0 0 rgba(255,64,96,.4)}50%{box-shadow:0 0 0 6px rgba(255,64,96,0)}}
+
+.input-row{display:flex;gap:8px;align-items:center}
+.input-row input,.input-row select{flex:1}
+
+/* Range sliders */
+.slider-group{margin-bottom:12px}
+.slider-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.slider-val{font-family:'SF Mono','Fira Code',monospace;font-size:12px;color:var(--purple-lt);font-weight:700}
+input[type=range]{width:100%;accent-color:var(--purple);height:4px}
+
+/* Char count */
+.char-count{font-size:11px;color:var(--muted);text-align:right;margin-top:4px}
+
+/* Audio player */
+.audio-wrap{display:none;margin-top:12px}
+audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180deg)}
+
+/* Error / Info boxes */
+.error-box{background:var(--red-dim);border:1px solid rgba(255,64,96,.3);border-radius:8px;padding:9px 12px;color:var(--red);font-size:12px;margin-top:8px;display:none}
+.info-box{background:var(--purple-dim);border:1px solid rgba(124,58,237,.25);border-radius:8px;padding:9px 12px;color:var(--muted);font-size:12px;margin-top:8px}
+
+/* Chat box */
+.chat-box{background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:12px;min-height:160px;max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.chat-box::-webkit-scrollbar{width:4px}
+.chat-box::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.chat-empty{color:var(--muted);font-size:13px;text-align:center;margin:auto}
+.msg{border-radius:8px;padding:8px 12px;font-size:13px;max-width:88%;line-height:1.45}
+.msg-label{font-size:9px;font-weight:700;letter-spacing:.08em;margin-bottom:3px}
+.msg-user{align-self:flex-end;background:var(--purple-dim);border:1px solid rgba(124,58,237,.3)}
+.msg-user .msg-label{color:var(--purple-lt)}
+.msg-agent{align-self:flex-start;background:var(--card2);border:1px solid var(--border2)}
+.msg-agent .msg-label{color:var(--green)}
+.msg-system{align-self:center;font-size:11px;color:var(--muted);background:none;border:none;padding:2px}
+
+/* Live indicator */
+.live-indicator{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:var(--green);margin-top:10px}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse-green 1.5s ease-in-out infinite}
+
+/* Spinner */
+.spinner{display:none;text-align:center;padding:12px;color:var(--muted);font-size:12px}
+.spinner::before{content:'⏳ '}
+
+/* Conv mode buttons */
+.conv-mode-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);color:var(--muted);font-size:12px;cursor:pointer;transition:all .2s;font-weight:500}
+.conv-mode-btn.active,.conv-mode-btn:hover{background:var(--purple-dim);border-color:var(--purple);color:var(--text)}
+
+/* S2S panels */
+#conv-voice-panel,#conv-text-panel,#conv-s2s-panel{transition:opacity .2s}
+
+/* Badge */
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700}
+.badge-dot{width:5px;height:5px;border-radius:50%}
+.badge-muted{background:var(--card2);border:1px solid var(--border2);color:var(--muted)}
+.badge-muted .badge-dot{background:var(--muted)}
+.badge-green{background:var(--green-dim);border:1px solid var(--green);color:var(--green)}
+.badge-green .badge-dot{background:var(--green)}
+.badge-yellow{background:var(--yellow-dim);border:1px solid var(--yellow);color:var(--yellow)}
+.badge-yellow .badge-dot{background:var(--yellow)}
+.badge-red{background:var(--red-dim);border:1px solid var(--red);color:var(--red)}
+.badge-red .badge-dot{background:var(--red)}
+
+/* Rec indicator */
+.rec-indicator{display:none;align-items:center;gap:6px;color:var(--red);font-size:12px;margin-top:8px}
+.rec-indicator .pulse-dot{background:var(--red)}
+@keyframes pulse-rec-dot{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Glow effects on cards */
+.card-glow-green{box-shadow:0 0 20px var(--green-dim)}
+.card-glow-purple{box-shadow:0 0 20px var(--purple-dim)}
+
+/* Responsive */
+@media(max-width:900px){
+  .main{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto}
+  .trading-panel{max-height:50vh}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Ticker ── -->
+<div class="ticker">
+  <div class="ticker-track" id="ticker-track">
+    <!-- filled by JS, duplicated for infinite scroll -->
+  </div>
+</div>
+
+<!-- ── Header ── -->
+<div class="header">
+  <div class="logo">
+    <div class="logo-mark">M</div>
+    <div>
+      <div class="logo-text">Manny's Studio</div>
+      <div class="logo-sub">Trading + Voice Intelligence</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="session-badge">
+      <div class="session-dot"></div>
+      NY Session · 9:30 AM ET
+    </div>
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="api-bar">
+      <input class="api-input" id="api-key-input" type="password" placeholder="ElevenLabs API Key" />
+      <button class="btn-connect" id="connect-btn" onclick="connectAPI()">Connect</button>
+      <span class="badge-voices" id="voices-badge"><span id="voices-count">0</span> Voices</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- ══ LEFT: Trading Panel ══ -->
+  <div class="trading-panel">
+
+    <!-- Market Context -->
+    <div class="t-section">
+      <div class="t-section-title">Market Context</div>
+      <div class="mkt-grid">
+        <div class="mkt-card neg">
+          <div class="mkt-sym">DXY</div>
+          <div class="mkt-price" id="mkt-dxy">98.542</div>
+          <div class="mkt-chg neg" id="mkt-dxy-chg">▼ -0.59%</div>
+        </div>
+        <div class="mkt-card pos">
+          <div class="mkt-sym">GOLD</div>
+          <div class="mkt-price" id="mkt-gold">4,769.9</div>
+          <div class="mkt-chg pos" id="mkt-gold-chg">▲ +0.43%</div>
+        </div>
+        <div class="mkt-card neg">
+          <div class="mkt-sym">VIX</div>
+          <div class="mkt-price" id="mkt-vix">19.63</div>
+          <div class="mkt-chg neg" id="mkt-vix-chg">▼ -23.86%</div>
+        </div>
+        <div class="mkt-card neg">
+          <div class="mkt-sym">US10Y</div>
+          <div class="mkt-price" id="mkt-10y">4.307%</div>
+          <div class="mkt-chg neg" id="mkt-10y-chg">▼ -0.83%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Today's Performance -->
+    <div class="t-section">
+      <div class="t-section-title">Today's Performance</div>
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-label">Win Rate</div>
+          <div class="stat-val muted" id="stat-wr">—</div>
+          <div class="stat-sub">No trades</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total R</div>
+          <div class="stat-val muted" id="stat-rr">0.0</div>
+          <div class="stat-sub">Risk units</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Trades</div>
+          <div class="stat-val muted" id="stat-trades">0</div>
+          <div class="stat-sub">of 2 max</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
+        <div class="trades-pill">
+          ⚡ <span id="trades-avail">2</span> trades available today
+        </div>
+        <div style="font-size:10px;color:var(--muted)">Min 5:1 RR required</div>
+      </div>
+    </div>
+
+    <!-- Discipline -->
+    <div class="t-section">
+      <div class="t-section-title">Discipline</div>
+      <div class="disc-row">
+        <div class="disc-grade" id="disc-grade">N/A</div>
+        <div class="disc-meta">
+          <div class="disc-score" id="disc-score">Score: 0/100</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">No sessions logged</div>
+        </div>
+      </div>
+      <div class="disc-bar-wrap">
+        <div class="disc-bar" id="disc-bar" style="width:0%"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">Start logging trades to track discipline score</div>
+    </div>
+
+    <!-- Bias Notes -->
+    <div class="t-section">
+      <div class="t-section-title">Market Bias</div>
+      <div class="bias-list">
+        <div class="bias-item">DXY falling — bullish support for Gold</div>
+        <div class="bias-item">VIX low at 19.63 — calm, low-volatility environment</div>
+        <div class="bias-item">Gold flat +0.43% today — no clear momentum yet</div>
+      </div>
+    </div>
+
+    <!-- Rules & Reminders -->
+    <div class="t-section">
+      <div class="t-section-title">Session Rules</div>
+      <div class="reminder-list">
+        <div class="reminder-item">Wait for NY session open (9:30 AM ET)</div>
+        <div class="reminder-item">Minimum 5:1 RR required on every trade</div>
+        <div class="reminder-item">Max 2 trades per day — no exceptions</div>
+        <div class="reminder-item">No FOMO — wait for your setup to come to you</div>
+      </div>
+    </div>
+
+    <!-- Weekly Summary -->
+    <div class="t-section">
+      <div class="t-section-title">This Week · Apr 6–12</div>
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-label">Rating</div>
+          <div class="stat-val red" style="font-size:13px;margin-top:4px">Poor</div>
+          <div class="stat-sub">0 trades</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Week R</div>
+          <div class="stat-val muted">0.0</div>
+          <div class="stat-sub">Risk units</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Grade</div>
+          <div class="stat-val muted">N/A</div>
+          <div class="stat-sub">Discipline</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /trading-panel -->
+
+  <!-- ══ RIGHT: ElevenLabs Panel ══ -->
+  <div class="el-panel">
+
+    <!-- Tabs -->
+    <div class="el-tabs">
+      <button class="el-tab active" onclick="switchTab('tts',this)">🔊 Text to Speech</button>
+      <button class="el-tab" onclick="switchTab('s2s',this)">🎙 Speech to Speech</button>
+      <button class="el-tab" onclick="switchTab('conv',this)">🤖 Conversational AI</button>
+    </div>
+
+    <div class="el-content">
+
+      <!-- ── TTS ── -->
+      <div id="panel-tts" class="tab-panel active">
+        <div class="card">
+          <div style="display:flex;gap:12px;margin-bottom:14px">
+            <div style="flex:1">
+              <label class="field-label">Voice</label>
+              <select id="tts-voice"><option>Loading voices…</option></select>
+            </div>
+            <div style="flex:1">
+              <label class="field-label">Model</label>
+              <select id="tts-model">
+                <option value="eleven_multilingual_v2">Multilingual v2</option>
+                <option value="eleven_turbo_v2_5">Turbo v2.5 (Fast)</option>
+                <option value="eleven_monolingual_v1">Monolingual v1</option>
+              </select>
+            </div>
+          </div>
+          <label class="field-label">Text</label>
+          <textarea id="tts-text" rows="4" placeholder="Type or paste text here to generate speech…" oninput="updateCharCount()"></textarea>
+          <div class="char-count"><span id="char-count">0</span> chars</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;gap:16px">
+            <div style="flex:1">
+              <div class="slider-group">
+                <div class="slider-row">
+                  <label class="field-label" style="margin:0">Stability</label>
+                  <span class="slider-val" id="stab-val">0.50</span>
+                </div>
+                <input type="range" id="stability" min="0" max="1" step="0.01" value="0.50" oninput="document.getElementById('stab-val').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+            </div>
+            <div style="flex:1">
+              <div class="slider-group">
+                <div class="slider-row">
+                  <label class="field-label" style="margin:0">Similarity</label>
+                  <span class="slider-val" id="sim-val">0.75</span>
+                </div>
+                <input type="range" id="similarity" min="0" max="1" step="0.01" value="0.75" oninput="document.getElementById('sim-val').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="tts-gen-btn" onclick="generateTTS()" style="width:100%">▶ Generate Speech</button>
+          <div id="tts-error" class="error-box"></div>
+          <div class="audio-wrap" id="tts-audio-wrap">
+            <audio id="tts-audio" controls></audio>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── S2S ── -->
+      <div id="panel-s2s" class="tab-panel">
+        <div class="card">
+          <div style="display:flex;gap:12px;margin-bottom:14px">
+            <div style="flex:1">
+              <label class="field-label">Target Voice</label>
+              <select id="s2s-voice"><option>Loading voices…</option></select>
+            </div>
+            <div style="flex:1">
+              <label class="field-label">Model</label>
+              <select id="s2s-model">
+                <option value="eleven_english_sts_v2">STS v2</option>
+                <option value="eleven_multilingual_sts_v2">STS Multilingual v2</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-bottom:12px">
+            <button class="btn btn-secondary" id="s2s-rec-btn" onclick="toggleRecording()" style="flex:1">⏺ Record from Mic</button>
+            <label class="btn btn-secondary" style="flex:1;justify-content:center;cursor:pointer">
+              📁 Upload Audio
+              <input type="file" id="s2s-file" accept="audio/*" style="display:none" onchange="handleS2SFile(this)">
+            </label>
+          </div>
+          <div id="s2s-rec-indicator" class="rec-indicator">
+            <div class="pulse-dot" style="background:var(--red);animation:pulse-rec-dot 1s ease-in-out infinite"></div>
+            <span id="s2s-rec-time">Recording…</span>
+          </div>
+          <div id="s2s-input-wrap" style="display:none;margin-top:10px">
+            <label class="field-label">Input Audio</label>
+            <audio id="s2s-input-audio" controls style="width:100%;border-radius:8px"></audio>
+          </div>
+          <div id="s2s-error" class="error-box"></div>
+        </div>
+        <div class="card" id="s2s-result-card" style="display:none">
+          <label class="field-label">Output — Converted Voice</label>
+          <div class="spinner" id="s2s-spinner">Processing audio…</div>
+          <div id="s2s-output-wrap" style="display:none">
+            <audio id="s2s-output-audio" controls style="width:100%;border-radius:8px"></audio>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Conversational AI ── -->
+      <div id="panel-conv" class="tab-panel">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <label class="field-label" style="margin:0">Agent Session</label>
+            <span id="conv-badge" class="badge badge-muted"><span class="badge-dot"></span><span id="conv-status-label">Idle</span></span>
+          </div>
+          <div class="input-row" style="margin-bottom:12px">
+            <input type="text" id="conv-agent-id" placeholder="Agent ID" style="font-family:monospace;font-size:12px" />
+            <button class="btn btn-primary" id="conv-btn" onclick="toggleConversation()">🎙 Start</button>
+          </div>
+          <div id="conv-error" class="error-box"></div>
+          <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+            <button id="refresh-agent-btn" class="btn btn-secondary" onclick="refreshAgentContext()" style="font-size:11px;padding:5px 12px">🔄 Refresh Agent Context</button>
+          </div>
+          <!-- Mode selector -->
+          <div style="display:flex;gap:6px">
+            <button class="conv-mode-btn active" id="mode-voice" onclick="setConvMode('voice',this)">🎙 Voice</button>
+            <button class="conv-mode-btn" id="mode-text" onclick="setConvMode('text',this)">⌨️ Type</button>
+            <button class="conv-mode-btn" id="mode-s2s" onclick="setConvMode('s2s',this)">🔄 Audio</button>
+          </div>
+        </div>
+
+        <!-- Voice mode -->
+        <div id="conv-voice-panel" class="card" style="padding:14px 18px">
+          <div class="info-box" style="margin:0">Speak freely — microphone streams live to your agent once connected.</div>
+          <div id="conv-live-indicator" class="live-indicator" style="display:none">
+            <div class="pulse-dot"></div>Live — speak into your microphone
+          </div>
+        </div>
+
+        <!-- Type mode -->
+        <div id="conv-text-panel" class="card" style="display:none">
+          <label class="field-label">Type to Agent</label>
+          <div class="input-row" style="align-items:flex-end">
+            <textarea id="conv-text-input" rows="2" placeholder="Type message — agent responds with voice…"
+              style="flex:1;background:var(--input-bg);border:1px solid var(--border2);border-radius:8px;padding:9px 13px;color:var(--text);font-size:13px;font-family:inherit"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendTextToAgent();}"></textarea>
+            <button class="btn btn-primary" onclick="sendTextToAgent()" style="height:44px">Send ↵</button>
+          </div>
+        </div>
+
+        <!-- Audio mode -->
+        <div id="conv-s2s-panel" class="card" style="display:none">
+          <label class="field-label">Send Audio to Agent</label>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <button class="btn btn-secondary" id="conv-rec-btn" onclick="toggleConvRecording()" style="flex:1">⏺ Record</button>
+            <label class="btn btn-secondary" style="flex:1;justify-content:center;cursor:pointer">
+              📁 Upload<input type="file" id="conv-audio-file" accept="audio/*" style="display:none" onchange="sendAudioFileToAgent(this)">
+            </label>
+          </div>
+          <div id="conv-s2s-preview" style="display:none">
+            <audio id="conv-s2s-audio" controls style="width:100%;border-radius:8px;margin-bottom:8px"></audio>
+          </div>
+          <div id="conv-s2s-status" style="font-size:12px;color:var(--muted)"></div>
+        </div>
+
+        <!-- Transcript -->
+        <div class="card">
+          <label class="field-label">Transcript</label>
+          <div class="chat-box" id="chat-box">
+            <div class="chat-empty" id="chat-empty">Enter your Agent ID and click Start to begin.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /el-content -->
+  </div><!-- /el-panel -->
+</div><!-- /main -->
+
+<script>
+// ── Constants ────────────────────────────────────────────────────────────────
+const API_BASE = 'https://api.elevenlabs.io/v1';
+const API_KEY  = 'sk_524569ce2cf217196514ae23cd02a0c890cb5963017dcbbe';
+const AGENT_ID = 'agent_9101kp3xsh6tf1gs813edp1nqkwc';
+
+// ── State ────────────────────────────────────────────────────────────────────
+let voices = [], currentApiKey = '';
+let s2sRecording = false, s2sMediaRecorder = null, s2sChunks = [], s2sTimer = null, s2sRecSeconds = 0;
+let convWs = null, convStatus = 'idle', convPlayCtx = null;
+let convMicCtx = null, convMicStream = null, convProcessor = null;
+let convQueue = [], convPlaying = false, convMode = 'voice';
+let convS2SRecording = false, convS2SMediaRecorder = null, convS2SChunks = [];
+let _ttsAudioCtx = null, _ttsAudioSource = null;
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+window.onload = () => {
+  document.getElementById('api-key-input').value = API_KEY;
+  document.getElementById('conv-agent-id').value = AGENT_ID;
+  connectAPI();
+  startClock();
+  buildTicker();
+};
+
+function startClock() {
+  const update = () => {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+  };
+  update(); setInterval(update, 1000);
+}
+
+function buildTicker() {
+  const items = [
+    {sym:'DXY',  price:'98.542', chg:'-0.59%', pos:false},
+    {sym:'GOLD', price:'4,769.9',chg:'+0.43%', pos:true},
+    {sym:'VIX',  price:'19.63',  chg:'-23.86%',pos:false},
+    {sym:'US10Y',price:'4.307%', chg:'-0.83%', pos:false},
+    {sym:'US2Y', price:'3.605%', chg:'-0.28%', pos:false},
+  ];
+  const html = items.map(i=>`
+    <div class="tick-item">
+      <span class="tick-sym">${i.sym}</span>
+      <span class="tick-price">${i.price}</span>
+      <span class="tick-chg ${i.pos?'pos':'neg'}">${i.chg}</span>
+    </div>`).join('');
+  // duplicate for seamless scroll
+  const track = document.getElementById('ticker-track');
+  track.innerHTML = html + html;
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.el-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+}
+
+// ── Connect API ───────────────────────────────────────────────────────────────
+async function connectAPI() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) return;
+  const btn = document.getElementById('connect-btn');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const res = await fetch(`${API_BASE}/voices`, { headers: {'xi-api-key': key} });
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    const data = await res.json();
+    voices = data.voices || [];
+    currentApiKey = key;
+    populateVoiceSelects();
+    const badge = document.getElementById('voices-badge');
+    badge.style.display = 'inline-flex';
+    document.getElementById('voices-count').textContent = voices.length;
+    btn.textContent = '↻';
+  } catch (e) {
+    btn.textContent = 'Retry';
+  }
+  btn.disabled = false;
+}
+
+function populateVoiceSelects() {
+  const opts = voices.map(v =>
+    `<option value="${v.voice_id}">${v.name}${v.labels?.accent?' ('+v.labels.accent+')':''}</option>`
+  ).join('');
+  document.getElementById('tts-voice').innerHTML = opts;
+  document.getElementById('s2s-voice').innerHTML = opts;
+}
+
+// ── AudioContext engine ───────────────────────────────────────────────────────
+async function playAudioBlob(blob) {
+  if (_ttsAudioSource) { try { _ttsAudioSource.stop(); } catch(e) {} _ttsAudioSource = null; }
+  if (!_ttsAudioCtx || _ttsAudioCtx.state === 'closed') _ttsAudioCtx = new AudioContext();
+  if (_ttsAudioCtx.state === 'suspended') await _ttsAudioCtx.resume();
+  const arrayBuf = await blob.arrayBuffer();
+  const audioBuf = await _ttsAudioCtx.decodeAudioData(arrayBuf);
+  const source   = _ttsAudioCtx.createBufferSource();
+  source.buffer  = audioBuf;
+  source.connect(_ttsAudioCtx.destination);
+  source.start(0);
+  _ttsAudioSource = source;
+  const blobUrl = URL.createObjectURL(blob);
+  document.getElementById('tts-audio').src = blobUrl;
+  document.getElementById('tts-audio-wrap').style.display = 'block';
+}
+
+// ── TTS ───────────────────────────────────────────────────────────────────────
+function updateCharCount() {
+  document.getElementById('char-count').textContent = document.getElementById('tts-text').value.length;
+}
+
+async function generateTTS() {
+  const text     = document.getElementById('tts-text').value.trim();
+  const voiceId  = document.getElementById('tts-voice').value;
+  const modelId  = document.getElementById('tts-model').value;
+  const stability  = parseFloat(document.getElementById('stability').value);
+  const similarity = parseFloat(document.getElementById('similarity').value);
+  const errBox = document.getElementById('tts-error');
+  const btn    = document.getElementById('tts-gen-btn');
+
+  if (!text) { showErr(errBox,'Enter some text first.'); return; }
+  if (!currentApiKey) { showErr(errBox,'Connect your API key first.'); return; }
+
+  // Unlock AudioContext immediately (in gesture scope)
+  if (!_ttsAudioCtx || _ttsAudioCtx.state === 'closed') _ttsAudioCtx = new AudioContext();
+  _ttsAudioCtx.resume();
+
+  btn.disabled = true; btn.textContent = '⏳ Generating…';
+  errBox.style.display = 'none';
+  document.getElementById('tts-audio-wrap').style.display = 'none';
+
+  try {
+    const res = await fetch(`${API_BASE}/text-to-speech/${voiceId}`, {
+      method:'POST',
+      headers:{'xi-api-key':currentApiKey,'Content-Type':'application/json'},
+      body: JSON.stringify({text, model_id:modelId, voice_settings:{stability, similarity_boost:similarity}})
+    });
+    if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.detail?.message||`Error ${res.status}`); }
+    await playAudioBlob(await res.blob());
+  } catch(e) { showErr(errBox, e.message); }
+
+  btn.disabled = false; btn.textContent = '▶ Generate Speech';
+}
+
+// ── Codec detection (works cross-platform: Android, iOS, desktop) ─────────────
+function getSupportedMimeType() {
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4;codecs=mp4a.40.2',
+    'audio/mp4',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
+  ];
+  for (const t of types) {
+    if (MediaRecorder.isTypeSupported(t)) return t;
+  }
+  return ''; // browser default
+}
+
+function mimeToExt(mime) {
+  if (mime.includes('mp4')) return 'mp4';
+  if (mime.includes('ogg')) return 'ogg';
+  return 'webm';
+}
+
+// ── S2S ───────────────────────────────────────────────────────────────────────
+async function toggleRecording() {
+  if (!s2sRecording) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      const mimeType = getSupportedMimeType();
+      s2sChunks = [];
+      s2sMediaRecorder = mimeType ? new MediaRecorder(stream, {mimeType}) : new MediaRecorder(stream);
+      const recordedMime = s2sMediaRecorder.mimeType || mimeType || 'audio/webm';
+      s2sMediaRecorder.ondataavailable = e => { if (e.data.size > 0) s2sChunks.push(e.data); };
+      s2sMediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(s2sChunks, {type: recordedMime});
+        showS2SInput(blob); runS2S(blob, recordedMime);
+      };
+      s2sMediaRecorder.start();
+      s2sRecording = true; s2sRecSeconds = 0;
+      document.getElementById('s2s-rec-btn').classList.add('recording');
+      document.getElementById('s2s-rec-btn').textContent = '⏹ Stop  0:00';
+      document.getElementById('s2s-rec-indicator').style.display = 'flex';
+      s2sTimer = setInterval(() => {
+        s2sRecSeconds++;
+        const m = Math.floor(s2sRecSeconds/60), s = String(s2sRecSeconds%60).padStart(2,'0');
+        document.getElementById('s2s-rec-btn').textContent = `⏹ Stop  ${m}:${s}`;
+        document.getElementById('s2s-rec-time').textContent = `Recording… ${m}:${s}`;
+      }, 1000);
+    } catch(e) { showErr(document.getElementById('s2s-error'),'Mic error: '+e.message); }
+  } else {
+    s2sMediaRecorder?.stop(); clearInterval(s2sTimer); s2sRecording = false;
+    document.getElementById('s2s-rec-btn').classList.remove('recording');
+    document.getElementById('s2s-rec-btn').textContent = '⏺ Record from Mic';
+    document.getElementById('s2s-rec-indicator').style.display = 'none';
+  }
+}
+
+function handleS2SFile(input) {
+  const file = input.files[0]; if (!file) return;
+  showS2SInput(file); runS2S(file, file.type); input.value = '';
+}
+
+function showS2SInput(blob) {
+  document.getElementById('s2s-input-audio').src = URL.createObjectURL(blob);
+  document.getElementById('s2s-input-wrap').style.display = 'block';
+  document.getElementById('s2s-result-card').style.display = 'block';
+}
+
+async function runS2S(blob, mimeType) {
+  const voiceId = document.getElementById('s2s-voice').value;
+  const modelId = document.getElementById('s2s-model').value;
+  const errBox  = document.getElementById('s2s-error');
+  if (!voiceId || !currentApiKey) { showErr(errBox,'Connect API key first.'); return; }
+  errBox.style.display = 'none';
+  document.getElementById('s2s-spinner').style.display = 'block';
+  document.getElementById('s2s-output-wrap').style.display = 'none';
+
+  // Unlock audio on user gesture context
+  if (!_ttsAudioCtx || _ttsAudioCtx.state === 'closed') _ttsAudioCtx = new AudioContext();
+  _ttsAudioCtx.resume();
+
+  try {
+    const ext = mimeToExt(mimeType || blob.type || 'audio/webm');
+    const form = new FormData();
+    form.append('audio', blob, `input.${ext}`);
+    form.append('model_id', modelId);
+    const res = await fetch(`${API_BASE}/speech-to-speech/${voiceId}`, {
+      method:'POST', headers:{'xi-api-key':currentApiKey}, body:form
+    });
+    if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.detail?.message||`Error ${res.status}`); }
+    const out = await res.bloc();
+    document.getElementById('s2s-output-audio').src = URL.createObjectURL(out);
+    document.getElementById('s2s-output-wrap').style.display = 'block';
+    await playAudioBlob(out);
+  } catch(e) { showErr(errBox, e.message); }
+  document.getElementById('s2s-spinner').style.display = 'none';
+}
+
+// ── Conversational AI ─────────────────────────────────────────────────────────
+function setConvMode(mode, btn) {
+  convMode = mode;
+  document.querySelectorAll('.conv-mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('conv-voice-panel').style.display = mode==='voice'?'block':'none';
+  document.getElementById('conv-text-panel').style.display  = mode==='text' ?'block':'none';
+  document.getElementById('conv-s2s+panel').style.display   = mode==='s2s'  ?'block':'none';
+}
+
+async function toggleConversation() {
+  if (convStatus==='idle'||convStatus==='error') await startConversation();
+  else stopConversation();
+}
+
+async function startConversation() {
+  const agentId = document.getElementById('conv-agent-id').value.trim();
+  const errBox  = document.getElementById('conv-error');
+  if (!agentId||!currentApiKey) { showErr(errBox,'Enter Agent ID and connect API key.'); return; }
+
+  // Unlock AudioContext IMMEDIATELY in gesture scope
+  if (!convPlayCtx||convPlayCtx.state==='closed') convPlayCtx = new (window.AudioContext||window.webkitAudioContext)();
+  convPlayCtx.resume();
+
+  setConvStatus('connecting'); errBox.style.display = 'none'; clearChat();
+  try {
+    const res = await fetch(`${API_BASE}/convai/conversation/get_signed_url?agent_id=${encodeURIComponent(agentId)}`,
+      {headers:{'xi-api-key':currentApiKey}});
+    if (!res.ok) throw new Error(`Session error (${res.status}) — check Agent ID`);
+    const {signed_url} = await res.json();
+    convWs = new WebSocket(signed_url);
+
+    convWs.onopen = async () => {
+      setConvStatus('active');
+      addChatMsg('system','🟢 Connected — injecting live context…');
+
+      // Inject fresh live context so agent knows real-time state
+      const now = new Date();
+      const dynamicContext = buildLiveContext(now);
+      convWs.send(JSON.stringify({
+        type: 'conversation_initiation_client_data',
+        conversation_config_override: {
+          agent: {
+            prompt: { prompt: dynamicContext }
+          }
+        }
+      }));
+      addChatMsg('system','📊 Live trading context loaded');
+
+      if (convMode==='voice'||convMode==='text') {
+        try {
+          convMicStream = await navigator.mediaDevices.getUserMedia({audio:true});
+          convMicCtx    = new AudioContext({sampleRate:16000});
+          const src = convMicCtx.createMediaStreamSource(convMicStream);
+          convProcessor = convMicCtx.createScriptProcessor(2048,1,1);
+          convProcessor.onaudioprocess = ev => {
+            if (convWs&&convWs.readyState===WebSocket.OPEN)
+              convWs.send(JSON.stringify({user_audio_chunk:toPCM16Base64(ev.inputBuffer.getChannelData(0))}));
+          };
+          src.connect(convProcessor);
+          convProcessor.connect(convMicCtx.destination);
+        } catch(e) { addChatMsg('system','⚠ Mic: '+e.message); }
+      }
+    };
+
+    convWs.onmessage = ev => {
+      try {
+        const d = JSON.parse(ev.data);
+        if (d.type==='audio') { const b64=d.audio_event?.audio_base_64; if(b64){convQueue.push(b64);playNextConv();} }
+        else if (d.type==='agent_response') { const t=d.agent_response_event?.agent_response; if(t) addChatMsg('agent',t); }
+        else if (d.type==='user_transcript') { const t=d.user_transcription_event?.user_transcript; if(t) addChatMsg('user',t); }
+        else if (d.type==='interruption') { convQueue=[]; }
+        else if (d.type==='ping') { convWs.send(JSON.stringify({type:'pong',event_id:d.ping_event?.event_id})); }
+      } catch {}
+    };
+
+    convWs.onerror = () => { setConvStatus('error'); showErr(document.getElementById('conv-error'),'WebSocket error — verify Agent ID.'); };
+    convWs.onclose = () => { setConvStatus('idle'); addChatMsg('system','🔴 Session ended'); cleanupConv(); };
+  } catch(e) { setConvStatus('error'); showErr(document.getElementById('conv-error'), e.message); }
+}
+
+function stopConversation() { convWs?.close(); cleanupConv(); setConvStatus('idle'); }
+
+function cleanupConv() {
+  convMicStream?.getTracks().forEach(t=>t.stop());
+  convProcessor?.disconnect();
+  convMicCtx?.close().catch(()=>{});
+  convMicCtx = null;
+  convQueue = []; convPlaying = false;
+}
+
+async function playNextConv() {
+  if (convPlaying||convQueue.length===0||!convPlayCtx) return;
+  convPlaying = true;
+  const b64 = convQueue.shift();
+  try {
+    if (convPlayCtx.state==='suspended') await convPlayCtx.resume();
+    const binary = atob(b64);
+    const bytes  = new Uint8Array(binary.length);
+    for (let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+
+    let audioBuf;
+    try {
+      audioBuf = await convPlayCtx.decodeAudioData(bytes.buffer.slice(0));
+    } catch {
+      // Raw PCM16 @ 16kHz fallback (ElevenLabs default ConvAI format)
+      const pcm16 = new Int16Array(bytes.buffer);
+      const f32   = new Float32Array(pcm16.length);
+      for (let i=0;i<pcm16.length;i++) f32[i]=pcm16[i]/32768.0;
+      audioBuf = convPlayCtx.createBuffer(1,f32.length,16000);
+      audioBuf.getChannelData(0).set(f32);
+    }
+
+    const src = convPlayCtx.createBufferSource();
+    src.buffer = audioBuf;
+    src.connect(convPlayCtx.destination);
+    src.onended = () => { convPlaying=false; playNextConv(); };
+    src.start();
+  } catch { convPlaying=false; playNextConv(); }
+}
+
+// ── Conv Type to Chat ─────────────────────────────────────────────────────────
+function sendTextToAgent() {
+  const input = document.getElementById('conv-text-input');
+  const text  = input.value.trim();
+  if (!text) return;
+  if (!convWs||convWs.readyState!==WebSocket.OPEN) {
+    showErr(document.getElementById('conv-error'),'Start the session first.');
+    return;
+  }
+  convWs.send(JSON.stringify({type:'text_message',text}));
+  addChatMsg('user',text);
+  input.value='';
+}
+
+// ── Conv Audio Mode ───────────────────────────────────────────────────────────
+function toggleConvRecording() {
+  if (!convS2SRecording) {
+    navigator.mediaDevices.getUserMedia({audio:true}).then(stream => {
+      const mimeType = getSupportedMimeType();
+      convS2SChunks=[];
+      convS2SMediaRecorder = mimeType ? new MediaRecorder(stream,{mimeType}) : new MediaRecorder(stream);
+      const recordedMime = convS2SMediaRecorder.mimeType || mimeType || 'audio/webm';
+      convS2SMediaRecorder.ondataavailable = e => { if(e.data.size>0) convS2SChunks.push(e.data); };
+      convS2SMediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t=>t.stop());
+        const blob = new Blob(convS2SChunks,{type: recordedMime});
+        document.getElementById('conv-s2s-audio').src = URL.createObjectURL(blob);
+        document.getElementById('conv-s2s-preview').style.display='block';
+        sendAudioBlobToAgent(blob);
+      };
+      convS2SMediaRecorder.start();
+      convS2SRecording=true;
+      document.getElementById('conv-rec-btn').textContent='⏹ Stop';
+      document.getElementById('conv-rec-btn').classList.add('recording');
+      document.getElementById('conv-s2s-status').textContent='🔴 Recording…';
+    }).catch(e=>{ document.getElementById('conv-s2s-status').textContent='⚠ Mic: '+e.message; });
+  } else {
+    convS2SMediaRecorder?.stop();
+    convS2SRecording=false;
+    document.getElementById('conv-rec-btn').textContent='⏺ Record';
+    document.getElementById('conv-rec-btn').classList.remove('recording');
+  }
+}
+
+function sendAudioFileToAgent(input) {
+  const file=input.files[0]; if(!file) return;
+  document.getElementById('conv-s2s-audio').src=URL.createObjectURL(file);
+  document.getElementById('conv-s2s-preview').style.display='block';
+  sendAudioBlobToAgent(file); input.value='';
+}
+
+async function sendAudioBlobToAgent(blob) {
+  const statusEl=document.getElementById('conv-s2s-status');
+  if (!convWs||convWs.readyState!==WebSocket.OPEN) { statusEl.textContent='⚠ Start a session first.'; return; }
+  statusEl.textContent='⏳ Processing audio…';
+  try {
+    const arrayBuf  = await blob.arrayBuffer();
+    const decodeCtx = new AudioContext();
+    const decoded   = await decodeCtx.decodeAudioData(arrayBuf);
+    await decodeCtx.close();
+    const TARGET_SR = 16000;
+    const numFrames = Math.ceil(decoded.duration*TARGET_SR);
+    const offCtx    = new OfflineAudioContext(1,numFrames,TARGET_SR);
+    const srcNode   = offCtx.createBufferSource();
+    srcNode.buffer  = decoded; srcNode.connect(offCtx.destination); srcNode.start(0);
+    const resampled = await offCtx.startRendering();
+    const raw       = resampled.getChannelData(0);
+    const chunkSize = 4096;
+    for (let i=0;i<raw.length;i+=chunkSize) {
+      if (convWs.readyState!==WebSocket.OPEN) break;
+      convWs.send(JSON.stringify({user_audio_chunk:toPCM16Base64(raw.slice(i,i+chunkSize))}));
+    }
+    statusEl.textContent='✅ Audio sent — agent responding…';
+    addChatMsg('user','[Audio clip sent]');
+  } catch(e) { statusEl.textContent='⚠ '+e.name+': '+e.message; }
+}
+
+// ── Conv Status ───────────────────────────────────────────────────────────────
+function setConvStatus(s) {
+  convStatus=s;
+  const badge=document.getElementById('conv-badge');
+  const label=document.getElementById('conv-status-label');
+  const btn  =document.getElementById('conv-btn');
+  const input=document.getElementById('conv-agent-id');
+  const live =document.getElementById('conv-live-indicator');
+  const map  ={idle:['Idle','badge-muted'],connecting:['Connecting…','badge-yellow'],active:['Live','badge-green'],error:['Error','badge-red']};
+  badge.className='badge '+(map[s]||map.idle)[1];
+  label.textContent=(map[s]||map.idle)[0];
+  btn.textContent=(s==='active'||s==='connecting')?'⏹ End':'🎙 Start';
+  btn.className =(s==='active'||s==='connecting')?'btn btn-danger':'btn btn-primary';
+  input.disabled=(s==='active'||s==='connecting');
+  live.style.display=s==='active'?'flex':'none';
+}
+
+function addChatMsg(role,text) {
+  const box=document.getElementById('chat-box');
+  const empty=document.getElementById('chat-empty');
+  if (empty) empty.remove();
+  const div=document.createElement('div');
+  div.className='msg msg-'+role;
+  if (role==='user')       div.innerHTML<`<div class="msg-label">YOU</div>${escHtml(text)}`;
+  else if (role==='agent') div.innerHTML<`<div class="msg-label">AGENT</div>${escHtml(text)}`;
+  else                     div.textContent=text;
+  box.appendChild(div);
+  box.scrollTop=box.scrollHeight;
+}
+
+function clearChat() {
+  document.getElementById('chat-box').innerHTML='<div class="chat-empty" id="chat-empty">Starting…</div>';
+}
+
+// ── Live Context Builder ──────────────────────────────────────────────────────
+// Builds fresh context injected into every ConvAI session at startup
+// Market data is embedded here — update by clicking "Refresh Agent Context"
+let liveMarketData = {
+  dxy:   { price: 98.542,  chg: -0.59  },
+  gold:  { price: 4769.9,  chg:  0.43  },
+  vix:   { price: 19.63,   chg: -23.86 },
+  us10y: { price: 4.307,   chg: -0.83  },
+  us2y:  { price: 3.605,   chg: -0.28  }
+};
+let livePerf = { trades: 0, winRate: 0, totalR: 0, discScore: 0, discGrade: 'N/A', tradesAvail: 2 };
+
+function buildLiveContext(now) {
+  const dateStr = now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const timeStr = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
+  const mkt = liveMarketData;
+  const p   = livePerf;
+  return `You are Manny's personal AI trading assistant, deeply integrated into his Claude OS system.
+
+## CURRENT SESSION — LIVE DATA
+- Date/Time: ${dateStr} at ${timeStr} ET
+- Trades available today: ${p.tradesAvail} of 2 remaining
+- Trades logged today: ${p.trades}
+- Win rate: ${p.winRate > 0 ? p.winRate + '%' : 'N/A — no trades yet'}
+- Total R today: ${p.totalR}
+- Discipline score: ${p.discScore}/100 (Grade: ${p.discGrade})
+
+## LIVE MARKET PRICES (refreshed at session start)
+- DXY: ${mkt.dxy.price} (${mkt.dxy.chg > 0 ? '+' : ''}${mkt.dxy.chg}%) — ${mkt.dxy.chg < 0 ? 'Dollar weakening — BULLISH for Gold' : 'Dollar strengthening — BEARISH for Gold'}
+- Gold: $${mkt.gold.price} (${mkt.gold.chg > 0 ? '+' : ''}${mkt.gold.chg}%)
+- VIX: ${mkt.vix.price} (${mkt.vix.chg > 0 ? '+' : ''}${mkt.vix.chg}%) — ${mkt.vix.price < 20 ? 'Low volatility — calm market conditions' : mkt.vix.price < 30 ? 'Moderate volatility' : 'HIGH volatility — trade with caution'}
+- US 10Y Yield: ${mkt.us10y.price}% (${mkt.us10y.chg > 0 ? '+' : ''}${mkt.us10y.chg}%)
+- US 2Y Yield: ${mkt.us2y.price}% (${mkt.us2y.chg > 0 ? '+' : ''}${mkt.us2y.chg}%)
+
+## MANNY'S TRADING RULES (enforce these strictly)
+- Minimum 5:1 Risk-to-Reward on every single trade
+- Maximum 2 trades per day — hard limit
+- NY session only — 9:30 AM ET open
+- No FOMO — the setup must come to you
+- Pre-trade checklist must pass before entry
+
+## WHO MANNY IS
+- Manny is a disciplined trader focused on Gold (XAUUSD) and FX
+- He runs a personal Claude OS ��� an AI system with trading journal, alerts, discipline tracking, Notion sync, Slack, Gmail, and Google Calendar all connected
+- He values bold, direct, honest communication — no fluff
+- He is building toward consistent profitability through strict rule adherence
+
+## YOUR BEHAVIOR
+- Keep voice responses short and punchy (2-3 sentences max unless asked for detail)
+- Call him by name occasionally
+- Enforce his rules — push back on any FOMO or rule-breaking talk
+- Be his accountability partner, market analyst, and trading coach
+- You have full context of his system — speak as if you've been with him from day one`;
+}
+
+// Update live market data (call this when you have fresh prices)
+function updateMarketData(data) {
+  if (data.dxy)   liveMarketData.dxy   = data.dxy;
+  if (data.gold)  liveMarketData.gold  = data.gold;
+  if (data.vix)   liveMarketData.vix   = data.vix;
+  if (data.us10y) liveMarketData.us10y = data.us10y;
+  if (data.us2y)  liveMarketData.us2y  = data.us2y;
+  if (data.perf)  livePerf = {...livePerf, ...data.perf};
+}
+
+// Push updated system prompt to agent via API
+async function refreshAgentContext() {
+  const btn = document.getElementById('refresh-agent-btn');
+  if (btn) { btn.textContent = '⏳ Updating…'; btn.disabled = true; }
+  const now = new Date();
+  const prompt = buildLiveContext(now);
+  try {
+    const res = await fetch(`${API_BASE}/convai/agents/${AGENT_ID}`, {
+      method: 'PATCH',
+      headers: { 'xi-api-key': currentApiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversation_config: {
+          agent: {
+            prompt: { prompt },
+            first_message: `Hey Manny — I'm refreshed and up to date. Gold's at ${liveMarketData.gold.price}, DXY ${liveMarketData.dxy.chg < 0 ? 'sliding' : 'rising'} at ${liveMarketData.dxy.price}. You've got ${livePerf.tradesAvail} trades available. What are we looking at?`
+          }
+        }
+      })
+    });
+    if (res.ok) {
+      if (btn) { btn.textContent = '✅ Agent Updated'; }
+      setTimeout(() => { if (btn) { btn.textContent = '🔄 Refresh Agent'; btn.disabled = false; } }, 2000);
+    } else {
+      if (btn) { btn.textContent = '⚠ Error'; btn.disabled = false; }
+    }
+  } catch(e) {
+    if (btn) { btn.textContent = '⚠ Error'; btn.disabled = false; }
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function toPCM16Base64(f32) {
+  const pcm=new Int16Array(f32.length);
+  for (let i=0;i<f32.length;i++) pcm[i]=Math.max(-32768,Math.min(32767,Math.round(f32[i]*32767)));
+  const bytes=new Uint8Array(pcm.buffer);
+  let bin='';
+  for (let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+function showErr(el,msg){ el.textContent='⚠ '+msg; el.style.display='block'; }
+function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
