@@ -219,6 +219,21 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
   .main{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto}
   .trading-panel{max-height:50vh}
 }
+
+/* ── FMP Live Watchlist ── */
+.fmp-live-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.4)}
+.fmp-live-dot{width:5px;height:5px;border-radius:50%;background:var(--cyan);animation:pulse-green 2s ease-in-out infinite}
+.watch-group{margin-bottom:10px}
+.watch-group-label{font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted2);margin-bottom:5px}
+.watch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.watch-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:7px 8px;position:relative;overflow:hidden;transition:border-color .2s}
+.watch-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.watch-card.pos::before{background:var(--green)}.watch-card.neg::before{background:var(--red)}.watch-card.neut::before{background:var(--muted2)}
+.watch-sym{font-size:9px;font-weight:700;letter-spacing:.05em;color:var(--muted);margin-bottom:2px}
+.watch-price{font-family:'SF Mono','Fira Code',monospace;font-size:12px;font-weight:700;color:var(--text);line-height:1.2}
+.watch-chg{font-size:10px;font-weight:600;margin-top:2px}
+.watch-chg.pos{color:var(--green)}.watch-chg.neg{color:var(--red)}.watch-chg.neut{color:var(--muted)}
+.fmp-status-row{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:10px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -246,6 +261,10 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
     </div>
     <div class="clock" id="clock">--:--:--</div>
     <div class="api-bar">
+      <input class="api-input" id="fmp-key-input" type="password" placeholder="FMP API Key" style="width:130px;border-color:rgba(0,212,255,.3)" />
+      <button class="btn-connect" id="fmp-btn" onclick="connectFMP()" style="background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.4);color:var(--cyan)">📊 Markets</button>
+      <span id="fmp-live-badge" class="fmp-live-tag" style="display:none"><span class="fmp-live-dot"></span>LIVE</span>
+      <div style="width:1px;height:18px;background:var(--border2);margin:0 3px"></div>
       <input class="api-input" id="api-key-input" type="password" placeholder="ElevenLabs API Key" />
       <button class="btn-connect" id="connect-btn" onclick="connectAPI()">Connect</button>
       <span class="badge-voices" id="voices-badge"><span id="voices-count">0</span> Voices</span>
@@ -263,27 +282,38 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
     <div class="t-section">
       <div class="t-section-title">Market Context</div>
       <div class="mkt-grid">
-        <div class="mkt-card neg">
+        <div class="mkt-card neg" id="card-dxy">
           <div class="mkt-sym">DXY</div>
           <div class="mkt-price" id="mkt-dxy">98.542</div>
           <div class="mkt-chg neg" id="mkt-dxy-chg">▼ -0.59%</div>
         </div>
-        <div class="mkt-card pos">
+        <div class="mkt-card pos" id="card-gold">
           <div class="mkt-sym">GOLD</div>
-          <div class="mkt-price" id="mkt-gold">4,769.9</div>
+          <div class="mkt-price" id="mkt-gold">$4,769.9</div>
           <div class="mkt-chg pos" id="mkt-gold-chg">▲ +0.43%</div>
         </div>
-        <div class="mkt-card neg">
+        <div class="mkt-card neg" id="card-vix">
           <div class="mkt-sym">VIX</div>
           <div class="mkt-price" id="mkt-vix">19.63</div>
           <div class="mkt-chg neg" id="mkt-vix-chg">▼ -23.86%</div>
         </div>
-        <div class="mkt-card neg">
+        <div class="mkt-card neg" id="card-10y">
           <div class="mkt-sym">US10Y</div>
           <div class="mkt-price" id="mkt-10y">4.307%</div>
           <div class="mkt-chg neg" id="mkt-10y-chg">▼ -0.83%</div>
         </div>
       </div>
+      <div class="fmp-status-row">
+        <span id="fmp-indicator-dot" style="width:5px;height:5px;border-radius:50%;background:var(--muted);flex-shrink:0;display:inline-block"></span>
+        <span id="fmp-ts">Static data — connect FMP key for live prices</span>
+        <span id="fmp-countdown" style="margin-left:auto;display:none;color:var(--muted)"></span>
+      </div>
+    </div>
+
+    <!-- Live Watchlist (populated by FMP) -->
+    <div class="t-section" id="fmp-watchlist-section" style="display:none">
+      <div class="t-section-title">Live Watchlist</div>
+      <div id="fmp-watchlist-grid"></div>
     </div>
 
     <!-- Today's Performance -->
@@ -333,7 +363,7 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
     <!-- Bias Notes -->
     <div class="t-section">
       <div class="t-section-title">Market Bias</div>
-      <div class="bias-list">
+      <div class="bias-list" id="bias-list">
         <div class="bias-item">DXY falling — bullish support for Gold</div>
         <div class="bias-item">VIX low at 19.63 — calm, low-volatility environment</div>
         <div class="bias-item">Gold flat +0.43% today — no clear momentum yet</div>
@@ -552,9 +582,10 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
 
 <script>
 // ── Constants ────────────────────────────────────────────────────────────────
-const API_BASE = 'https://api.elevenlabs.io/v1';
-const API_KEY  = 'sk_524569ce2cf217196514ae23cd02a0c890cb5963017dcbbe';
-const AGENT_ID = 'agent_9101kp3xsh6tf1gs813edp1nqkwc';
+const API_BASE  = 'https://api.elevenlabs.io/v1';
+const API_KEY   = 'sk_524569ce2cf217196514ae23cd02a0c890cb5963017dcbbe';
+const AGENT_ID  = 'agent_9101kp3xsh6tf1gs813edp1nqkwc';
+const FMP_KEY   = '3r9vq1WORcFNCxoL6OimVbTuUP4VpamD';
 
 // ── State ────────────────────────────────────────────────────────────────────
 let voices = [], currentApiKey = '';
@@ -569,9 +600,12 @@ let _ttsAudioCtx = null, _ttsAudioSource = null;
 window.onload = () => {
   document.getElementById('api-key-input').value = API_KEY;
   document.getElementById('conv-agent-id').value = AGENT_ID;
+  document.getElementById('fmp-key-input').value = FMP_KEY;
   connectAPI();
   startClock();
   buildTicker();
+  // Auto-connect FMP for live market data
+  setTimeout(connectFMP, 800);
 };
 
 function startClock() {
@@ -589,7 +623,7 @@ function buildTicker() {
     {sym:'GOLD', price:'4,769.9',chg:'+0.43%', pos:true},
     {sym:'VIX',  price:'19.63',  chg:'-23.86%',pos:false},
     {sym:'US10Y',price:'4.307%', chg:'-0.83%', pos:false},
-    {sym:'US2Y', price:'3.605%', chg:'-0.28%', pos:false},
+    {sym:'US2Y', price:+3.605%', chg:'-0.28%', pos:false},
   ];
   const html = items.map(i=>`
     <div class="tick-item">
@@ -786,7 +820,7 @@ async function runS2S(blob, mimeType) {
       method:'POST', headers:{'xi-api-key':currentApiKey}, body:form
     });
     if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.detail?.message||`Error ${res.status}`); }
-    const out = await res.bloc();
+    const out = await res.blob();
     document.getElementById('s2s-output-audio').src = URL.createObjectURL(out);
     document.getElementById('s2s-output-wrap').style.display = 'block';
     await playAudioBlob(out);
@@ -801,7 +835,7 @@ function setConvMode(mode, btn) {
   btn.classList.add('active');
   document.getElementById('conv-voice-panel').style.display = mode==='voice'?'block':'none';
   document.getElementById('conv-text-panel').style.display  = mode==='text' ?'block':'none';
-  document.getElementById('conv-s2s+panel').style.display   = mode==='s2s'  ?'block':'none';
+  document.getElementById('conv-s2s-panel').style.display   = mode==='s2s'  ?'block':'none';
 }
 
 async function toggleConversation() {
@@ -1015,8 +1049,8 @@ function addChatMsg(role,text) {
   if (empty) empty.remove();
   const div=document.createElement('div');
   div.className='msg msg-'+role;
-  if (role==='user')       div.innerHTML<`<div class="msg-label">YOU</div>${escHtml(text)}`;
-  else if (role==='agent') div.innerHTML<`<div class="msg-label">AGENT</div>${escHtml(text)}`;
+  if (role==='user')       div.innerHTML=`<div class="msg-label">YOU</div>${escHtml(text)}`;
+  else if (role==='agent') div.innerHTML=`<div class="msg-label">AGENT</div>${escHtml(text)}`;
   else                     div.textContent=text;
   box.appendChild(div);
   box.scrollTop=box.scrollHeight;
@@ -1069,7 +1103,7 @@ function buildLiveContext(now) {
 
 ## WHO MANNY IS
 - Manny is a disciplined trader focused on Gold (XAUUSD) and FX
-- He runs a personal Claude OS ��� an AI system with trading journal, alerts, discipline tracking, Notion sync, Slack, Gmail, and Google Calendar all connected
+- He runs a personal Claude OS — an AI system with trading journal, alerts, discipline tracking, Notion sync, Slack, Gmail, and Google Calendar all connected
 - He values bold, direct, honest communication — no fluff
 - He is building toward consistent profitability through strict rule adherence
 
@@ -1133,6 +1167,251 @@ function toPCM16Base64(f32) {
 
 function showErr(el,msg){ el.textContent='⚠ '+msg; el.style.display='block'; }
 function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── FMP Live Market Data ──────────────────────────────────────────────────────
+const FMP_BASE = 'https://financialmodelingprep.com/api/v3';
+let fmpApiKey = '';
+let fmpInterval = null;
+let fmpCountdownInterval = null;
+let fmpNextRefresh = 0;
+
+// Watchlist groups for the panel
+const FMP_GROUPS = [
+  { label: 'Commodities', symbols: ['GCUSD','SIUSD','CLUSD','NGUSD'], display: ['GOLD','SILVER','CRUDE','NATGAS'] },
+  { label: 'Forex',       symbols: ['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','USDCHF'], display: ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','USD/CAD','USD/CHF'] },
+  { label: 'Indices',     symbols: ['DX-Y.NYB','%5EVIX','%5EGSPC','%5EIXIC','%5EDJI','%5ERUT'], display: ['DXY','VIX','S&P500','NASDAQ','DOW','RUSSELL'] },
+  { label: 'Crypto',      symbols: ['BTCUSD','ETHUSD'], display: ['BTC','ETH'] },
+];
+
+async function connectFMP() {
+  const key = document.getElementById('fmp-key-input').value.trim();
+  if (!key) return;
+  fmpApiKey = key;
+  const btn = document.getElementById('fmp-btn');
+  btn.textContent = '⏳ Loading…'; btn.disabled = true;
+  const ok = await fetchFMPData();
+  if (ok) {
+    document.getElementById('fmp-live-badge').style.display = 'inline-flex';
+    btn.textContent = '🔄 Refresh';
+    btn.style.color = 'var(--cyan)';
+    if (fmpInterval) clearInterval(fmpInterval);
+    fmpInterval = setInterval(fetchFMPData, 60000);
+    startFMPCountdown(60);
+  } else {
+    btn.textContent = '⚠ Error — check key';
+    btn.style.color = 'var(--red)';
+  }
+  btn.disabled = false;
+}
+
+function startFMPCountdown(secs) {
+  if (fmpCountdownInterval) clearInterval(fmpCountdownInterval);
+  fmpNextRefresh = secs;
+  const el = document.getElementById('fmp-countdown');
+  el.style.display = 'inline';
+  fmpCountdownInterval = setInterval(() => {
+    fmpNextRefresh--;
+    if (fmpNextRefresh <= 0) { fmpNextRefresh = 60; }
+    el.textContent = 'refresh in ' + fmpNextRefresh + 's';
+  }, 1000);
+}
+
+async function fetchFMPData() {
+  if (!fmpApiKey) return false;
+  try {
+    // Build all symbols (URL-encode ^ for indices)
+    const allSymbols = FMP_GROUPS.flatMap(g => g.symbols).join(',');
+    const [quotesRes, treasuryRes] = await Promise.all([
+      fetch(`${FMP_BASE}/quote/${allSymbols}?apikey=${fmpApiKey}`),
+      fetch(`${FMP_BASE}/treasury?apikey=${fmpApiKey}`)
+    ]);
+    if (!quotesRes.ok) return false;
+    const quotes   = await quotesRes.json();
+    const treasury = treasuryRes.ok ? await treasuryRes.json() : [];
+    if (!Array.isArray(quotes) || quotes.length === 0) return false;
+    processFMPData(quotes, treasury);
+    return true;
+  } catch(e) {
+    console.warn('FMP fetch error:', e.message);
+    return false;
+  }
+}
+
+function processFMPData(quotes, treasury) {
+  // Build lookup: symbol → quote
+  const bySymbol = {};
+  quotes.forEach(q => { bySymbol[q.symbol] = q; });
+
+  // ── Update main 4-card Market Context ──────────────────────────────────────
+  const symMap = { gold: 'GCUSD', dxy: 'DX-Y.NYB', vix: '^VIX', us10y: null };
+
+  function applyCard(cardId, priceId, chgId, q, formatter) {
+    if (!q) return;
+    const chg = q.changesPercentage || 0;
+    const cls = chg > 0 ? 'pos' : chg < 0 ? 'neg' : 'neut';
+    document.getElementById(cardId).className = 'mkt-card ' + cls;
+    document.getElementById(priceId).textContent = formatter(q.price);
+    const chgEl = document.getElementById(chgId);
+    chgEl.textContent = (chg >= 0 ? '▲ +' : '▼ ') + Math.abs(chg).toFixed(2) + '%';
+    chgEl.className = 'mkt-chg ' + cls;
+  }
+
+  const gold = bySymbol['GCUSD'];
+  const dxy  = bySymbol['DX-Y.NYB'];
+  const vix  = bySymbol['^VIX'];
+
+  applyCard('card-gold', 'mkt-gold', 'mkt-gold-chg', gold, p => '$' + p.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1}));
+  applyCard('card-dxy',  'mkt-dxy',  'mkt-dxy-chg',  dxy,  p => p.toFixed(3));
+  applyCard('card-vix',  'mkt-vix',  'mkt-vix-chg',  vix,  p => p.toFixed(2));
+
+  // Treasury yields (separate endpoint)
+  if (treasury && treasury.length) {
+    const latest = treasury[0]; // most recent
+    if (latest && latest.year10) {
+      document.getElementById('card-10y').className = 'mkt-card neut';
+      document.getElementById('mkt-10y').textContent = parseFloat(latest.year10).toFixed(3) + '%';
+      document.getElementById('mkt-10y-chg').textContent = 'US 10Y Treasury';
+      document.getElementById('mkt-10y-chg').className = 'mkt-chg neut';
+      liveMarketData.us10y = { price: parseFloat(latest.year10), chg: 0 };
+      if (latest.year2) liveMarketData.us2y = { price: parseFloat(latest.year2), chg: 0 };
+    }
+  }
+
+  // ── Update liveMarketData for ConvAI context ────────────────────────────────
+  if (gold) liveMarketData.gold  = { price: gold.price, chg: gold.changesPercentage || 0 };
+  if (dxy)  liveMarketData.dxy   = { price: dxy.price,  chg: dxy.changesPercentage  || 0 };
+  if (vix)  liveMarketData.vix   = { price: vix.price,  chg: vix.changesPercentage  || 0 };
+
+  // ── Rebuild ticker bar with live data ──────────────────────────────────────
+  buildTickerFromFMP(bySymbol, treasury);
+
+  // ── Build broad watchlist panel ─────────────────────────────────────────────
+  buildWatchlistPanel(bySymbol, treasury);
+
+  // ── Update bias notes ────────────────────────────────────────────────────────
+  updateBiasNotes(bySymbol, treasury);
+
+  // ── Update status row ────────────────────────────────────────────────────────
+  document.getElementById('fmp-indicator-dot').style.background = 'var(--cyan)';
+  document.getElementById('fmp-ts').textContent =
+    'Live — updated ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+  fmpNextRefresh = 60;
+}
+
+function buildTickerFromFMP(bySymbol, treasury) {
+  const items = [];
+  const add = (sym, label, priceFmt, chgFmt) => {
+    const q = bySymbol[sym];
+    if (!q) return;
+    const chg = q.changesPercentage || 0;
+    items.push({ sym: label, price: priceFmt(q.price), chg: (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', pos: chg >= 0 });
+  };
+  add('GCUSD',    'GOLD',   p => '$' + p.toLocaleString('en-US',{maximumFractionDigits:1}), c => c);
+  add('DX-Y.NYB', 'DXY',    p => p.toFixed(3), c => c);
+  add('^VIX',     'VIX',    p => p.toFixed(2),  c => c);
+  add('EURUSD',   'EUR/USD',p => p.toFixed(4),  c => c);
+  add('GBPUSD',   'GBP/USD',p => p.toFixed(4),  c => c);
+  add('USDJPY',   'USD/JPY',p => p.toFixed(3),  c => c);
+  add('CLUSD',    'CRUDE',  p => '$' + p.toFixed(2), c => c);
+  add('%5EGSPC',  'S&P500', p => p.toLocaleString('en-US',{maximumFractionDigits:0}), c => c);
+  add('BTCUSD',   'BTC',    p => '$' + p.toLocaleString('en-US',{maximumFractionDigits:0}), c => c);
+  add('SIUSD',    'SILVER', p => '$' + p.toFixed(3), c => c);
+  // Treasury 10Y if available
+  if (treasury && treasury[0] && treasury[0].year10) {
+    items.push({ sym: 'US10Y', price: parseFloat(treasury[0].year10).toFixed(3) + '%', chg: 'yield', pos: false });
+  }
+  if (items.length === 0) return; // keep static if no data
+  const html = items.map(i => `
+    <div class="tick-item">
+      <span class="tick-sym">${i.sym}</span>
+      <span class="tick-price">${i.price}</span>
+      <span class="tick-chg ${i.pos ? 'pos' : 'neg'}">${i.chg}</span>
+    </div>`).join('');
+  document.getElementById('ticker-track').innerHTML = html + html;
+}
+
+function buildWatchlistPanel(bySymbol, treasury) {
+  const section = document.getElementById('fmp-watchlist-section');
+  const grid    = document.getElementById('fmp-watchlist-grid');
+  section.style.display = 'block';
+  let html = '';
+  FMP_GROUPS.forEach(group => {
+    const cards = group.symbols.map((sym, i) => {
+      const q = bySymbol[sym];
+      if (!q) return `<div class="watch-card neut"><div class="watch-sym">${group.display[i]}</div><div class="watch-price">—</div><div class="watch-chg neut">N/A</div></div>`;
+      const chg = q.changesPercentage || 0;
+      const cls = chg > 0 ? 'pos' : chg < 0 ? 'neg' : 'neut';
+      const priceStr = formatWatchPrice(sym, q.price);
+      return `<div class="watch-card ${cls}">
+        <div class="watch-sym">${group.display[i]}</div>
+        <div class="watch-price">${priceStr}</div>
+        <div class="watch-chg ${cls}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</div>
+      </div>`;
+    }).join('');
+    html += `<div class="watch-group"><div class="watch-group-label">${group.label}</div><div class="watch-grid">${cards}</div></div>`;
+  });
+  // Treasury section
+  if (treasury && treasury[0]) {
+    const t = treasury[0];
+    const yieldCards = [
+      ['2Y', t.year2],['5Y', t.year5],['10Y', t.year10],['30Y', t.year30]
+    ].filter(([,v]) => v).map(([label, val]) =>
+      `<div class="watch-card neut"><div class="watch-sym">${label}</div><div class="watch-price">${parseFloat(val).toFixed(3)}%</div><div class="watch-chg neut">yield</div></div>`
+    ).join('');
+    if (yieldCards) html += `<div class="watch-group"><div class="watch-group-label">US Treasuries</div><div class="watch-grid">${yieldCards}</div></div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function formatWatchPrice(sym, price) {
+  if (sym === 'GCUSD') return '$' + price.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1});
+  if (sym === 'SIUSD') return '$' + price.toFixed(3);
+  if (sym === 'CLUSD' || sym === 'NGUSD') return '$' + price.toFixed(2);
+  if (sym.endsWith('USD') && !sym.includes('-')) return price.toFixed(4); // forex
+  if (sym.startsWith('%5E') || sym === 'DX-Y.NYB') return price.toLocaleString('en-US',{maximumFractionDigits:2});
+  if (sym === 'BTCUSD' || sym === 'ETHUSD') return '$' + price.toLocaleString('en-US',{maximumFractionDigits:0});
+  return price.toFixed(2);
+}
+
+function updateBiasNotes(bySymbol, treasury) {
+  const biasEl = document.getElementById('bias-list');
+  if (!biasEl) return;
+  const notes = [];
+  const dxy  = bySymbol['DX-Y.NYB'];
+  const gold = bySymbol['GCUSD'];
+  const vix  = bySymbol['^VIX'];
+  const eurusd = bySymbol['EURUSD'];
+  if (dxy) {
+    const c = dxy.changesPercentage || 0;
+    notes.push(c < 0 ? `DXY falling ${c.toFixed(2)}% — bullish tailwind for Gold & commodities`
+                      : `DXY rising +${c.toFixed(2)}% — headwind for Gold & risk assets`);
+  }
+  if (vix) {
+    const p = vix.price;
+    const label = p < 15 ? 'Extreme complacency — low volatility regime'
+                : p < 20 ? `VIX ${p.toFixed(2)} — calm, low-volatility environment`
+                : p < 30 ? `VIX ${p.toFixed(2)} — moderate volatility, trade carefully`
+                :           `VIX ${p.toFixed(2)} — HIGH volatility, reduce size`;
+    notes.push(label);
+  }
+  if (gold) {
+    const c = gold.changesPercentage || 0;
+    const dir = c > 0.5 ? 'bullish momentum' : c < -0.5 ? 'bearish pressure' : 'consolidating';
+    notes.push(`Gold ${c >= 0 ? '+' : ''}${c.toFixed(2)}% — ${dir}`);
+  }
+  if (eurusd) {
+    const c = eurusd.changesPercentage || 0;
+    notes.push(`EUR/USD ${c >= 0 ? '+' : ''}${c.toFixed(2)}% · ${eurusd.price.toFixed(4)}`);
+  }
+  if (treasury && treasury[0] && treasury[0].year10) {
+    const y10 = parseFloat(treasury[0].year10);
+    const y2  = parseFloat(treasury[0].year2  || 0);
+    const spread = (y2 - y10).toFixed(3);
+    notes.push(`US10Y at ${y10.toFixed(3)}% — yield curve spread ${spread}%`);
+  }
+  if (notes.length === 0) return;
+  biasEl.innerHTML = notes.map(n => `<div class="bias-item">${n}</div>`).join('');
+}
 </script>
 </body>
 </html>
