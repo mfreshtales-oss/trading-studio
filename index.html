@@ -214,6 +214,20 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
 .card-glow-green{box-shadow:0 0 20px var(--green-dim)}
 .card-glow-purple{box-shadow:0 0 20px var(--purple-dim)}
 
+/* ── AutoResearch Panel ── */
+.research-drop{border:2px dashed var(--border2);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:border-color .2s}
+.research-drop:hover,.research-drop.drag-over{border-color:var(--purple)}
+.research-drop code{font-size:11px;color:var(--cyan);background:var(--card2);padding:2px 6px;border-radius:4px}
+.research-sym-btn{flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.04em}
+.research-sym-btn.active,.research-sym-btn:hover{background:var(--purple-dim);border-color:var(--purple);color:var(--text)}
+.pf-bar-wrap{display:flex;align-items:flex-end;gap:1px;height:70px;padding-top:4px}
+.pf-bar{flex:1;border-radius:2px 2px 0 0;opacity:.85;min-width:2px;transition:height .3s}
+.param-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border2);font-size:12px}
+.param-row:last-child{border-bottom:none}
+.res-table{width:100%;border-collapse:collapse;font-size:12px}
+.res-table th{padding:5px 8px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.res-table td{padding:5px 8px;border-top:1px solid var(--border2)}
+
 /* Responsive */
 @media(max-width:900px){
   .main{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto}
@@ -413,6 +427,7 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
       <button class="el-tab active" onclick="switchTab('tts',this)">🔊 Text to Speech</button>
       <button class="el-tab" onclick="switchTab('s2s',this)">🎙 Speech to Speech</button>
       <button class="el-tab" onclick="switchTab('conv',this)">🤖 Conversational AI</button>
+      <button class="el-tab" onclick="switchTab('research',this)">🔬 AutoResearch</button>
     </div>
 
     <div class="el-content">
@@ -575,6 +590,64 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
           </div>
         </div>
       </div>
+
+      <!-- ── AutoResearch ── -->
+      <div id="panel-research" class="tab-panel">
+
+        <!-- Instrument selector -->
+        <div class="card" style="padding:14px 18px;margin-bottom:14px">
+          <label class="field-label">Instrument</label>
+          <div style="display:flex;gap:6px" id="research-sym-btns">
+            <button class="research-sym-btn active" onclick="selectResearchSym('XAUUSD',this)">XAUUSD</button>
+            <button class="research-sym-btn" onclick="selectResearchSym('US30',this)">US30</button>
+            <button class="research-sym-btn" onclick="selectResearchSym('NAS100',this)">NAS100</button>
+            <button class="research-sym-btn" onclick="selectResearchSym('SPX',this)">SPX</button>
+            <button class="research-sym-btn" onclick="selectResearchSym('BTCUSD',this)">BTCUSD</button>
+          </div>
+        </div>
+
+        <!-- File drop -->
+        <div class="card research-drop" id="research-drop"
+             ondrop="handleResearchDrop(event)" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')"
+             onclick="document.getElementById('research-file-input').click()" style="margin-bottom:14px">
+          <input type="file" id="research-file-input" accept=".json" onchange="loadResearchFile(this.files[0])" style="display:none">
+          <div style="font-size:26px;margin-bottom:8px">🔬</div>
+          <div style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px">Drop experiment log here</div>
+          <div style="font-size:11px;color:var(--muted)">Load <code>research/results/<span id="drop-sym-hint">XAUUSD</span>/experiment_log.json</code></div>
+        </div>
+
+        <!-- Results (shown after file load) -->
+        <div id="research-results" style="display:none">
+
+          <!-- Summary stats -->
+          <div class="stat-row" id="research-summary" style="margin-bottom:14px"></div>
+
+          <!-- Best params + progress chart -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+            <div class="card">
+              <label class="field-label">Best Strategy Params</label>
+              <div id="research-params-body"></div>
+            </div>
+            <div class="card">
+              <label class="field-label" style="display:flex;justify-content:space-between">
+                <span>Profit Factor Progress</span>
+                <span id="research-spark-label" style="font-family:monospace;color:var(--purple-lt);font-size:10px;font-weight:700"></span>
+              </label>
+              <div class="pf-bar-wrap" id="research-sparkline"></div>
+              <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:4px">
+                <span>start</span><span>last 30 iters</span><span>latest</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent experiments -->
+          <div class="card">
+            <label class="field-label">Recent Experiments (last 10)</label>
+            <div style="overflow-x:auto" id="research-table"></div>
+          </div>
+
+        </div><!-- /research-results -->
+      </div><!-- /panel-research -->
 
     </div><!-- /el-content -->
   </div><!-- /el-panel -->
@@ -1373,6 +1446,121 @@ function updateBiasNotes(bySymbol, treasury) {
   }
   if (notes.length === 0) return;
   biasEl.innerHTML = notes.map(n => `<div class="bias-item">${n}</div>`).join('');
+}
+
+// ── AutoResearch Panel ────────────────────────────────────────────────────────
+let currentResearchSym = 'XAUUSD';
+const researchLogs = {};  // { XAUUSD: [...], US30: [...], ... }
+
+function selectResearchSym(sym, btn) {
+  currentResearchSym = sym;
+  document.querySelectorAll('#research-sym-btns .research-sym-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const hint = document.getElementById('drop-sym-hint');
+  if (hint) hint.textContent = sym;
+  renderResearchResults(sym);
+}
+
+function handleResearchDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadResearchFile(file);
+}
+
+function loadResearchFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const log = JSON.parse(ev.target.result);
+      researchLogs[currentResearchSym] = log;
+      renderResearchResults(currentResearchSym);
+    } catch(err) {
+      alert('Could not parse JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function renderResearchResults(sym) {
+  const log = researchLogs[sym];
+  const resultsEl = document.getElementById('research-results');
+  if (!log || log.length === 0) { resultsEl.style.display = 'none'; return; }
+  resultsEl.style.display = 'block';
+
+  const valid = log.filter(e => e.metrics && (e.metrics.profit_factor || 0) > 0);
+  if (valid.length === 0) return;
+
+  const best = valid.reduce((a, b) => (a.metrics.profit_factor >= b.metrics.profit_factor ? a : b));
+  const totalIters = log.filter(e => e.iteration > 0).length;
+  const improvements = log.filter(e => e.improvement).length;
+  const bestPF = best.metrics.profit_factor || 0;
+  const pfClass = bestPF >= 2 ? 'green' : bestPF >= 1 ? '' : 'red';
+
+  // Summary stats
+  document.getElementById('research-summary').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Best PF</div>
+      <div class="stat-val ${pfClass}" style="${pfClass==='' ? 'color:var(--yellow)' : ''}">${bestPF}</div>
+      <div class="stat-sub">iter #${best.iteration}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Win Rate</div>
+      <div class="stat-val ${best.metrics.win_rate >= 0.4 ? 'green' : 'muted'}">${Math.round((best.metrics.win_rate||0)*100)}%</div>
+      <div class="stat-sub">${best.metrics.wins||0}W / ${best.metrics.losses||0}L</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Iterations</div>
+      <div class="stat-val muted">${totalIters}</div>
+      <div class="stat-sub">${improvements} improved</div>
+    </div>`;
+
+  // Best params
+  const params = best.params || {};
+  document.getElementById('research-params-body').innerHTML =
+    Object.entries(params).map(([k,v]) =>
+      `<div class="param-row">
+         <span style="color:var(--muted)">${k}</span>
+         <span style="font-family:monospace;color:var(--text)">${v}</span>
+       </div>`
+    ).join('') || '<span style="color:var(--muted);font-size:12px">No params found</span>';
+
+  // Sparkline — last 30 valid iterations
+  const sparkData = valid.slice(-30);
+  const maxPF = Math.max(...sparkData.map(e => e.metrics.profit_factor), 0.01);
+  document.getElementById('research-spark-label').textContent = `max ${maxPF.toFixed(2)}`;
+  document.getElementById('research-sparkline').innerHTML = sparkData.map(e => {
+    const pf = e.metrics.profit_factor || 0;
+    const h  = Math.max(Math.round((pf / maxPF) * 66), 2);
+    const c  = pf >= 2 ? 'var(--green)' : pf >= 1 ? 'var(--yellow)' : 'var(--red)';
+    return `<div class="pf-bar" style="height:${h}px;background:${c}" title="iter ${e.iteration}: PF ${pf}"></div>`;
+  }).join('');
+
+  // Recent experiments table
+  const recent = [...log].reverse().slice(0, 10);
+  document.getElementById('research-table').innerHTML = `
+    <table class="res-table">
+      <thead><tr>
+        <th>Iter</th><th>PF</th><th>Win%</th><th>Total R</th><th>Trades</th><th>▲</th>
+      </tr></thead>
+      <tbody>
+        ${recent.map(e => {
+          const m = e.metrics || {};
+          const pf = m.profit_factor || 0;
+          const pfC = pf >= 2 ? 'var(--green)' : pf >= 1 ? 'var(--yellow)' : 'var(--red)';
+          const imp = e.improvement ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--muted2)">—</span>';
+          return `<tr>
+            <td style="color:var(--muted)">${e.iteration}</td>
+            <td style="font-family:monospace;color:${pfC};font-weight:700">${pf}</td>
+            <td style="font-family:monospace">${Math.round((m.win_rate||0)*100)}%</td>
+            <td style="font-family:monospace;color:var(--cyan)">${m.total_r||0}R</td>
+            <td>${m.total_trades||0}</td>
+            <td>${imp}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
 }
 </script>
 </body>
