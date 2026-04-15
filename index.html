@@ -1219,7 +1219,7 @@ function startFMPCountdown(secs) {
 async function fetchFMPData() {
   if (!fmpApiKey) return false;
   try {
-    const allSymbols = encodeURIComponent(FMP_GROUPS.flatMap(g => g.symbols).join(','));
+    const allSymbols = FMP_GROUPS.flatMap(g => g.symbols).map(s => encodeURIComponent(s)).join(",");
     const quotesRes = await fetch(`${FMP_BASE}/quote?symbol=${allSymbols}&apikey=${fmpApiKey}`);
     if (!quotesRes.ok) return false;
     const quotes = await quotesRes.json();
