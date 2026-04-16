@@ -865,8 +865,11 @@ async function startConversation() {
       addChatMsg('system','🟢 Connected — injecting live context…');
 
       // Inject fresh live context so agent knows real-time state
+      // Filter out empty lines to prevent empty text blocks being sent with
+      // cache_control to the Anthropic API, which rejects them with a 400 error.
       const now = new Date();
-      const dynamicContext = buildLiveContext(now);
+      const dynamicContext = buildLiveContext(now)
+        .split('\n').filter(line => line.trim() !== '').join('\n');
       convWs.send(JSON.stringify({
         type: 'conversation_initiation_client_data',
         conversation_config_override: {
@@ -901,11 +904,21 @@ async function startConversation() {
         else if (d.type==='user_transcript') { const t=d.user_transcription_event?.user_transcript; if(t) addChatMsg('user',t); }
         else if (d.type==='interruption') { convQueue=[]; }
         else if (d.type==='ping') { convWs.send(JSON.stringify({type:'pong',event_id:d.ping_event?.event_id})); }
-      } catch {}
+        else if (d.type==='error') {
+          const msg = d.error?.message || d.message || JSON.stringify(d.error || d);
+          addChatMsg('system','⚠ Session error: ' + msg);
+          showErr(document.getElementById('conv-error'), msg);
+        }
+      } catch(parseErr) { addChatMsg('system','⚠ Unreadable message from agent'); }
     };
 
     convWs.onerror = () => { setConvStatus('error'); showErr(document.getElementById('conv-error'),'WebSocket error — verify Agent ID.'); };
-    convWs.onclose = () => { setConvStatus('idle'); addChatMsg('system','🔴 Session ended'); cleanupConv(); };
+    convWs.onclose = ev => {
+      setConvStatus('idle');
+      const reason = ev.reason ? ` — ${ev.reason}` : (ev.code && ev.code !== 1000 ? ` (code ${ev.code})` : '');
+      addChatMsg('system','🔴 Session ended' + reason);
+      cleanupConv();
+    };
   } catch(e) { setConvStatus('error'); showErr(document.getElementById('conv-error'), e.message); }
 }
 
@@ -1148,10 +1161,14 @@ async function refreshAgentContext() {
       if (btn) { btn.textContent = '✅ Agent Updated'; }
       setTimeout(() => { if (btn) { btn.textContent = '🔄 Refresh Agent'; btn.disabled = false; } }, 2000);
     } else {
-      if (btn) { btn.textContent = '⚠ Error'; btn.disabled = false; }
+      let detail = `HTTP ${res.status}`;
+      try { const body = await res.json(); detail = body?.detail?.message || body?.message || body?.error?.message || JSON.stringify(body); } catch {}
+      console.error('refreshAgentContext error:', detail);
+      if (btn) { btn.title = detail; btn.textContent = '⚠ Error'; btn.disabled = false; }
     }
   } catch(e) {
-    if (btn) { btn.textContent = '⚠ Error'; btn.disabled = false; }
+    console.error('refreshAgentContext exception:', e);
+    if (btn) { btn.title = e.message; btn.textContent = '⚠ Error'; btn.disabled = false; }
   }
 }
 
