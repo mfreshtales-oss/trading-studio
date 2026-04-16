@@ -724,7 +724,8 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
 const API_BASE  = 'https://api.elevenlabs.io/v1';
 const API_KEY   = 'sk_524569ce2cf217196514ae23cd02a0c890cb5963017dcbbe';
 const AGENT_ID  = 'agent_9101kp3xsh6tf1gs813edp1nqkwc';
-const FMP_KEY   = '3r9vq1WORcFNCxoL6OimVbTuUP4VpamD';
+const FMP_KEY    = '3r9vq1WORcFNCxoL6OimVbTuUP4VpamD';
+const TAVILY_KEY = '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';
 
 const OPT_FMP_SYMBOLS = { XAUUSD:'XAUUSD', US30:'DJI', NAS100:'IXIC', SPX:'SPX', BTCUSD:'BTCUSD' };
 const SYMBOL_QUERIES  = {
@@ -748,7 +749,8 @@ let _ttsAudioCtx = null, _ttsAudioSource = null;
 window.onload = () => {
   document.getElementById('api-key-input').value = API_KEY;
   document.getElementById('conv-agent-id').value = AGENT_ID;
-  document.getElementById('fmp-key-input').value = FMP_KEY;
+  document.getElementById('fmp-key-input').value    = FMP_KEY;
+  document.getElementById('tavily-key-input').value = TAVILY_KEY;
   connectAPI();
   startClock();
   buildTicker();
@@ -1881,7 +1883,7 @@ async function startResearch() {
 // --- Tavily Market Intelligence ---
 
 async function fetchTavilyResearch(query) {
-  const key = (document.getElementById('tavily-key-input')?.value || '').trim();
+  const key = (document.getElementById('tavily-key-input')?.value || '').trim() || TAVILY_KEY;
   if (!key) return null;
   try {
     const res = await fetch('https://api.tavily.com/search', {
