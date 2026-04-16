@@ -214,6 +214,19 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
 .card-glow-green{box-shadow:0 0 20px var(--green-dim)}
 .card-glow-purple{box-shadow:0 0 20px var(--purple-dim)}
 
+/* ── Economic Calendar ── */
+.cal-event{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)}
+.cal-event:last-child{border-bottom:none}
+.cal-impact{flex-shrink:0;width:7px;height:7px;border-radius:50%;margin-top:3px}
+.cal-impact.high{background:var(--red);box-shadow:0 0 4px rgba(255,64,96,.5)}
+.cal-impact.med{background:var(--yellow)}
+.cal-time{color:var(--muted);font-family:'SF Mono','Fira Code',monospace;font-size:11px;min-width:46px;flex-shrink:0;padding-top:1px}
+.cal-currency{color:var(--cyan);font-size:10px;font-weight:700;min-width:28px;flex-shrink:0;padding-top:2px}
+.cal-name{color:var(--text);flex:1;line-height:1.35;font-size:12px}
+.cal-values{font-size:10px;color:var(--muted);margin-top:2px}
+.cal-empty{color:var(--muted);font-size:12px;font-style:italic;padding:4px 0}
+.cal-status{font-size:9px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px}
+
 /* Responsive */
 @media(max-width:900px){
   .main{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto}
@@ -367,6 +380,17 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
         <div class="bias-item">DXY falling — bullish support for Gold</div>
         <div class="bias-item">VIX low at 19.63 — calm, low-volatility environment</div>
         <div class="bias-item">Gold flat +0.43% today — no clear momentum yet</div>
+      </div>
+    </div>
+
+    <!-- Economic Calendar -->
+    <div class="t-section" id="calendar-section">
+      <div class="t-section-title">
+        Today's Calendar
+        <span id="cal-status" class="cal-status"></span>
+      </div>
+      <div id="calendar-list">
+        <div class="cal-empty">No events loaded — Claude fetches via Playwright</div>
       </div>
     </div>
 
@@ -1071,6 +1095,7 @@ let liveMarketData = {
   us2y:  { price: 3.605,   chg: -0.28  }
 };
 let livePerf = { trades: 0, winRate: 0, totalR: 0, discScore: 0, discGrade: 'N/A', tradesAvail: 2 };
+let liveCalendarEvents = []; // populated by Claude via Playwright MCP
 
 function buildLiveContext(now) {
   const dateStr = now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -1093,6 +1118,13 @@ function buildLiveContext(now) {
 - VIX: ${mkt.vix.price} (${mkt.vix.chg > 0 ? '+' : ''}${mkt.vix.chg}%) — ${mkt.vix.price < 20 ? 'Low volatility — calm market conditions' : mkt.vix.price < 30 ? 'Moderate volatility' : 'HIGH volatility — trade with caution'}
 - US 10Y Yield: ${mkt.us10y.price}% (${mkt.us10y.chg > 0 ? '+' : ''}${mkt.us10y.chg}%)
 - US 2Y Yield: ${mkt.us2y.price}% (${mkt.us2y.chg > 0 ? '+' : ''}${mkt.us2y.chg}%)
+
+## TODAY'S ECONOMIC CALENDAR
+${liveCalendarEvents.length
+  ? liveCalendarEvents.map(e =>
+      `- ${e.time} [${e.impact}] ${e.currency} — ${e.event}${e.forecast ? ' | Forecast: ' + e.forecast : ''}${e.actual ? ' | Actual: ' + e.actual : ''}${e.previous ? ' | Prev: ' + e.previous : ''}`
+    ).join('\n')
+  : '- No calendar data loaded yet'}
 
 ## MANNY'S TRADING RULES (enforce these strictly)
 - Minimum 5:1 Risk-to-Reward on every single trade
@@ -1125,6 +1157,35 @@ function updateMarketData(data) {
   if (data.perf)  livePerf = {...livePerf, ...data.perf};
 }
 
+// ── Economic Calendar (injected by Claude via Playwright MCP) ─────────────────
+// Claude calls: window.setCalendarEvents([{time,currency,event,impact,forecast,previous,actual}])
+function setCalendarEvents(events) {
+  liveCalendarEvents = Array.isArray(events) ? events : [];
+  renderCalendarUI();
+  const statusEl = document.getElementById('cal-status');
+  if (statusEl) statusEl.textContent =
+    'Updated ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
+}
+
+function renderCalendarUI() {
+  const el = document.getElementById('calendar-list');
+  if (!el) return;
+  if (!liveCalendarEvents.length) {
+    el.innerHTML = '<div class="cal-empty">No events loaded — Claude fetches via Playwright</div>';
+    return;
+  }
+  el.innerHTML = liveCalendarEvents.map(e => `
+    <div class="cal-event">
+      <div class="cal-impact ${e.impact === 'HIGH' ? 'high' : 'med'}"></div>
+      <div class="cal-time">${e.time || '—'}</div>
+      <div class="cal-currency">${e.currency || ''}</div>
+      <div style="flex:1">
+        <div class="cal-name">${e.event}</div>
+        ${(e.forecast || e.previous || e.actual) ? `<div class="cal-values">${e.actual ? '<span style="color:var(--green)">A: '+e.actual+'</span> · ' : ''}F: ${e.forecast||'—'} · P: ${e.previous||'—'}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
 // Push updated system prompt to agent via API
 async function refreshAgentContext() {
   const btn = document.getElementById('refresh-agent-btn');
@@ -1139,7 +1200,7 @@ async function refreshAgentContext() {
         conversation_config: {
           agent: {
             prompt: { prompt },
-            first_message: `Hey Manny — I'm refreshed and up to date. Gold's at ${liveMarketData.gold.price}, DXY ${liveMarketData.dxy.chg < 0 ? 'sliding' : 'rising'} at ${liveMarketData.dxy.price}. You've got ${livePerf.tradesAvail} trades available. What are we looking at?`
+            first_message: `Hey Manny — I'm refreshed and locked in. Gold's at ${liveMarketData.gold.price}, DXY ${liveMarketData.dxy.chg < 0 ? 'sliding' : 'rising'} at ${liveMarketData.dxy.price}. ${liveCalendarEvents.filter(e=>e.impact==='HIGH').length > 0 ? 'Heads up — ' + liveCalendarEvents.filter(e=>e.impact==='HIGH').length + ' high-impact event' + (liveCalendarEvents.filter(e=>e.impact==='HIGH').length > 1 ? 's' : '') + ' on the calendar today. ' : ''}You've got ${livePerf.tradesAvail} trades available. What are we looking at?`
           }
         }
       })
