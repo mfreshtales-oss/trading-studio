@@ -220,6 +220,39 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
   .trading-panel{max-height:50vh}
 }
 
+/* ── Optimizer Tab ── */
+.opt-panel{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.opt-header-row{display:grid;grid-template-columns:1fr 1fr;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--surface)}
+.opt-header-cell{padding:14px 20px;border-right:1px solid var(--border)}
+.opt-header-cell:last-child{border-right:none;text-align:right}
+.opt-header-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.opt-header-val{font-family:'SF Mono','Fira Code',monospace;font-size:32px;font-weight:900;color:var(--text);line-height:1}
+.opt-header-val.best{color:var(--cyan)}
+.opt-chart-wrap{flex-shrink:0;height:300px;border-bottom:1px solid var(--border);background:var(--bg)}
+.opt-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 32px;text-align:center;overflow-y:auto}
+.opt-body-title{font-size:20px;font-weight:800;color:var(--text);margin-bottom:10px}
+.opt-body-desc{font-size:13px;color:var(--muted);line-height:1.6;max-width:460px;margin-bottom:28px}
+.opt-btn-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-research{background:linear-gradient(135deg,#c026d3,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;padding:12px 28px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+.btn-research:hover{opacity:.9;transform:translateY(-1px)}
+.btn-research:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-baseline{background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:14px;font-weight:600;padding:12px 24px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+.btn-baseline:hover{border-color:var(--purple);color:var(--purple-lt)}
+.btn-baseline:disabled{opacity:.5;cursor:not-allowed}
+.opt-progress-wrap{width:100%;max-width:420px;margin:16px auto 0}
+.opt-progress-bar-bg{background:var(--card2);border-radius:4px;height:6px;overflow:hidden;margin:10px 0}
+.opt-progress-bar{height:100%;border-radius:4px;background:linear-gradient(90deg,#c026d3,var(--cyan));transition:width .3s ease}
+.opt-running-label{font-size:12px;color:var(--muted);text-align:center}
+.opt-results-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;width:100%;max-width:480px;margin-bottom:16px}
+.opt-metric-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+.opt-metric-label{font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.opt-metric-val{font-family:'SF Mono','Fira Code',monospace;font-size:24px;font-weight:900;line-height:1}
+.opt-metric-val.green{color:var(--green)}.opt-metric-val.cyan{color:var(--cyan)}.opt-metric-val.red{color:var(--red)}.opt-metric-val.yellow{color:var(--yellow)}
+.opt-params-box{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--muted);font-family:'SF Mono','Fira Code',monospace;line-height:1.8;max-width:480px;width:100%;margin-bottom:16px;text-align:left}
+.opt-params-box span{color:var(--cyan)}
+.opt-footer-bar{border-top:1px solid var(--border);background:var(--surface);padding:9px 20px;display:flex;align-items:center;gap:20px;flex-shrink:0;font-size:11px;color:var(--muted)}
+.opt-footer-bar b{color:var(--text);font-family:'SF Mono','Fira Code',monospace}
+
 /* ── FMP Live Watchlist ── */
 .fmp-live-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.4)}
 .fmp-live-dot{width:5px;height:5px;border-radius:50%;background:var(--cyan);animation:pulse-green 2s ease-in-out infinite}
@@ -413,6 +446,7 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
       <button class="el-tab active" onclick="switchTab('tts',this)">🔊 Text to Speech</button>
       <button class="el-tab" onclick="switchTab('s2s',this)">🎙 Speech to Speech</button>
       <button class="el-tab" onclick="switchTab('conv',this)">🤖 Conversational AI</button>
+      <button class="el-tab" onclick="switchTab('optimizer',this)">📈 Optimizer</button>
     </div>
 
     <div class="el-content">
@@ -573,6 +607,71 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
           <div class="chat-box" id="chat-box">
             <div class="chat-empty" id="chat-empty">Enter your Agent ID and click Start to begin.</div>
           </div>
+        </div>
+      </div>
+
+      <!-- ── Optimizer ── -->
+      <div id="panel-optimizer" class="tab-panel" style="padding:0;margin:0">
+        <div class="opt-panel">
+
+          <!-- Header Stats Row -->
+          <div class="opt-header-row">
+            <div class="opt-header-cell">
+              <div class="opt-header-label">Iterations</div>
+              <div class="opt-header-val" id="opt-iter-count">0</div>
+            </div>
+            <div class="opt-header-cell">
+              <div class="opt-header-label">Best Sharpe</div>
+              <div class="opt-header-val best" id="opt-best-sharpe">—</div>
+            </div>
+          </div>
+
+          <!-- TradingView Chart -->
+          <div class="opt-chart-wrap">
+            <div class="tradingview-widget-container" style="height:100%">
+              <div id="tradingview_opt_chart" style="height:100%"></div>
+            </div>
+          </div>
+
+          <!-- Ready State -->
+          <div class="opt-body" id="opt-ready-state">
+            <div class="opt-body-title">Ready to optimize XAUUSD</div>
+            <div class="opt-body-desc">The AI agent will iteratively tune EMA crossover parameters, momentum filters, and trend filters — running backtests and keeping only improvements.</div>
+            <div class="opt-btn-row">
+              <button class="btn-research" onclick="startResearch()">▶ Start Research</button>
+              <button class="btn-baseline" onclick="runBaselineBacktest()">▶ Run Baseline Backtest</button>
+            </div>
+          </div>
+
+          <!-- Running State -->
+          <div class="opt-body" id="opt-running-state" style="display:none">
+            <div class="opt-body-title" id="opt-running-title">Optimizing XAUUSD…</div>
+            <div class="opt-body-desc" id="opt-running-desc">Fetching 2 years of OHLC data and testing parameter combinations.</div>
+            <div class="opt-progress-wrap">
+              <div class="opt-progress-bar-bg"><div class="opt-progress-bar" id="opt-progress-bar" style="width:0%"></div></div>
+              <div class="opt-running-label" id="opt-running-label">Initializing…</div>
+            </div>
+          </div>
+
+          <!-- Results State -->
+          <div class="opt-body" id="opt-results-state" style="display:none">
+            <div class="opt-body-title" id="opt-results-title">Optimization Complete</div>
+            <div class="opt-results-grid" id="opt-results-grid"></div>
+            <div class="opt-params-box" id="opt-params-box"></div>
+            <div class="opt-btn-row">
+              <button class="btn-research" onclick="startResearch()">▶ New Research</button>
+              <button class="btn-baseline" onclick="setOptimizerState('ready')">↩ Reset</button>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="opt-footer-bar" id="opt-footer-bar" style="display:none">
+            <span>Win Rate <b id="opt-footer-wr">—</b></span>
+            <span>Total R <b id="opt-footer-r">—</b></span>
+            <span>Trades <b id="opt-footer-trades">—</b></span>
+            <span>Max DD <b id="opt-footer-dd">—</b></span>
+          </div>
+
         </div>
       </div>
 
@@ -1391,6 +1490,287 @@ function updateBiasNotes(bySymbol, treasury) {
   if (notes.length === 0) return;
   biasEl.innerHTML = notes.map(n => `<div class="bias-item">${n}</div>`).join('');
 }
+
+// ── Optimizer ──────────────────────────────────────────────────────────────────
+
+let optRunning = false;
+
+// --- Technical Indicators ---
+
+function calcEMA(closes, period) {
+  const k = 2 / (period + 1);
+  const ema = new Array(closes.length).fill(null);
+  let sum = 0;
+  for (let i = 0; i < period; i++) sum += closes[i];
+  ema[period - 1] = sum / period;
+  for (let i = period; i < closes.length; i++) {
+    ema[i] = closes[i] * k + ema[i - 1] * (1 - k);
+  }
+  return ema;
+}
+
+function calcRSI(closes, period = 14) {
+  const rsi = new Array(closes.length).fill(null);
+  if (closes.length < period + 1) return rsi;
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d > 0) gains += d; else losses -= d;
+  }
+  let avgGain = gains / period, avgLoss = losses / period;
+  rsi[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    avgGain = (avgGain * (period - 1) + Math.max(d, 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(-d, 0)) / period;
+    rsi[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  }
+  return rsi;
+}
+
+// --- Backtest Engine ---
+// Returns: { winRate, sharpe, maxDrawdown, totalR, trades, wins, losses, params }
+// or null if too few trades
+
+function runBacktest(ohlc, params) {
+  const { fastEma, slowEma, rsiMin, rsiMax, trendEma } = params;
+  const closes = ohlc.map(d => d.close);
+  const fast  = calcEMA(closes, fastEma);
+  const slow  = calcEMA(closes, slowEma);
+  const rsi   = calcRSI(closes, 14);
+  const trend = trendEma > 0 ? calcEMA(closes, trendEma) : null;
+
+  let inTrade = false, entryPrice = 0;
+  let wins = 0, losses = 0, totalR = 0, maxDD = 0, peak = 0, equity = 0;
+  const returns = [];
+
+  for (let i = 1; i < ohlc.length; i++) {
+    if (fast[i] == null || slow[i] == null || rsi[i] == null) continue;
+    if (trend && trend[i] == null) continue;
+    const pf = fast[i - 1], ps = slow[i - 1];
+    if (pf == null || ps == null) continue;
+
+    const crossUp   = pf <= ps && fast[i] > slow[i];
+    const crossDown = pf >= ps && fast[i] < slow[i];
+    const rsiOk     = rsi[i] >= rsiMin && rsi[i] <= rsiMax;
+    const trendOk   = !trend || closes[i] > trend[i];
+
+    if (!inTrade && crossUp && rsiOk && trendOk) {
+      inTrade = true;
+      entryPrice = ohlc[i].open || closes[i];
+    } else if (inTrade && crossDown) {
+      const exit = ohlc[i].open || closes[i];
+      const r = (exit - entryPrice) / (entryPrice * 0.01);
+      totalR += r; equity += r;
+      if (equity > peak) peak = equity;
+      const dd = peak - equity;
+      if (dd > maxDD) maxDD = dd;
+      if (r > 0) wins++; else losses++;
+      returns.push(r);
+      inTrade = false;
+    }
+  }
+
+  const n = wins + losses;
+  if (n < 5) return null;
+  const winRate = wins / n;
+  const mean = totalR / n;
+  const variance = returns.reduce((s, r) => s + (r - mean) ** 2, 0) / n;
+  const sharpe = variance === 0 ? 0 : (mean / Math.sqrt(variance)) * Math.sqrt(252 / Math.max(ohlc.length / n, 1));
+
+  return { winRate, sharpe, maxDrawdown: maxDD, totalR, trades: n, wins, losses, params };
+}
+
+// --- FMP Historical OHLC Fetch ---
+
+async function fetchXAUHistory() {
+  if (!fmpApiKey) {
+    alert('FMP not connected. Please connect via the Markets button first.');
+    return null;
+  }
+  const to   = new Date();
+  const from = new Date(); from.setFullYear(from.getFullYear() - 2);
+  const fromStr = from.toISOString().split('T')[0];
+  const toStr   = to.toISOString().split('T')[0];
+  try {
+    const res = await fetch(`${FMP_BASE}/historical-price-eod/full?symbol=XAUUSD&from=${fromStr}&to=${toStr}&apikey=${fmpApiKey}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const hist = data.historicalStockList?.[0]?.historical || data.historical || [];
+    return hist
+      .filter(d => d.close > 0)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  } catch (e) {
+    console.error('XAU history error:', e);
+    return null;
+  }
+}
+
+// --- UI State Management ---
+
+function setOptimizerState(state) {
+  document.getElementById('opt-ready-state').style.display   = state === 'ready'   ? 'flex' : 'none';
+  document.getElementById('opt-running-state').style.display = state === 'running' ? 'flex' : 'none';
+  document.getElementById('opt-results-state').style.display = state === 'results' ? 'flex' : 'none';
+  document.getElementById('opt-footer-bar').style.display    = state === 'results' ? 'flex' : 'none';
+  if (state === 'ready') {
+    document.getElementById('opt-iter-count').textContent  = '0';
+    document.getElementById('opt-best-sharpe').textContent = '—';
+    optRunning = false;
+  }
+}
+
+function updateOptimizerHeader(iterations, bestSharpe) {
+  document.getElementById('opt-iter-count').textContent  = iterations;
+  document.getElementById('opt-best-sharpe').textContent = bestSharpe != null ? bestSharpe.toFixed(2) : '—';
+}
+
+function renderOptimizerResults(best) {
+  const wr = (best.winRate * 100).toFixed(1);
+  const sh = best.sharpe.toFixed(2);
+  const dd = best.maxDrawdown.toFixed(1);
+  const tr = best.totalR.toFixed(1);
+  document.getElementById('opt-results-grid').innerHTML = `
+    <div class="opt-metric-card"><div class="opt-metric-label">Win Rate</div><div class="opt-metric-val green">${wr}%</div></div>
+    <div class="opt-metric-card"><div class="opt-metric-label">Sharpe Ratio</div><div class="opt-metric-val cyan">${sh}</div></div>
+    <div class="opt-metric-card"><div class="opt-metric-label">Max Drawdown</div><div class="opt-metric-val red">${dd}R</div></div>
+    <div class="opt-metric-card"><div class="opt-metric-label">Total Trades</div><div class="opt-metric-val yellow">${best.trades}</div></div>`;
+  const p = best.params;
+  document.getElementById('opt-params-box').innerHTML =
+    `Fast EMA <span>${p.fastEma}</span> · Slow EMA <span>${p.slowEma}</span> · RSI Range <span>${p.rsiMin}–${p.rsiMax}</span> · Trend EMA <span>${p.trendEma > 0 ? p.trendEma : 'Off'}</span><br>Total R <span>${tr > 0 ? '+' : ''}${tr}</span> · Wins <span>${best.wins}</span> · Losses <span>${best.losses}</span>`;
+  document.getElementById('opt-footer-wr').textContent     = wr + '%';
+  document.getElementById('opt-footer-r').textContent      = (tr > 0 ? '+' : '') + tr + 'R';
+  document.getElementById('opt-footer-trades').textContent = best.trades;
+  document.getElementById('opt-footer-dd').textContent     = dd + 'R';
+}
+
+// --- Baseline Backtest ---
+
+async function runBaselineBacktest() {
+  if (optRunning) return;
+  optRunning = true;
+  setOptimizerState('running');
+  document.getElementById('opt-running-title').textContent = 'Running Baseline Backtest…';
+  document.getElementById('opt-running-desc').textContent  = 'Fetching 2 years of XAUUSD OHLC data from FMP…';
+  document.getElementById('opt-progress-bar').style.width  = '15%';
+  document.getElementById('opt-running-label').textContent = 'Downloading historical data…';
+
+  const ohlc = await fetchXAUHistory();
+  if (!ohlc || ohlc.length < 50) {
+    optRunning = false;
+    setOptimizerState('ready');
+    alert('Could not fetch XAUUSD history. Check FMP connection.');
+    return;
+  }
+
+  document.getElementById('opt-progress-bar').style.width  = '65%';
+  document.getElementById('opt-running-label').textContent = `Running backtest on ${ohlc.length} candles…`;
+  await new Promise(r => setTimeout(r, 150));
+
+  const result = runBacktest(ohlc, { fastEma: 12, slowEma: 50, rsiMin: 40, rsiMax: 60, trendEma: 200 });
+  document.getElementById('opt-progress-bar').style.width  = '100%';
+  await new Promise(r => setTimeout(r, 200));
+
+  optRunning = false;
+  if (!result) {
+    setOptimizerState('ready');
+    alert('Baseline generated too few trades. Try a different time range.');
+    return;
+  }
+  updateOptimizerHeader(1, result.sharpe);
+  renderOptimizerResults(result);
+  document.getElementById('opt-results-title').textContent = 'Baseline — EMA 12/50 · RSI 40–60 · Trend 200';
+  setOptimizerState('results');
+}
+
+// --- Iterative Research Loop ---
+
+async function startResearch() {
+  if (optRunning) return;
+  optRunning = true;
+  setOptimizerState('running');
+  document.getElementById('opt-running-title').textContent = 'Optimizing XAUUSD…';
+  document.getElementById('opt-running-desc').textContent  = 'Fetching 2 years of OHLC data and testing parameter combinations.';
+  document.getElementById('opt-progress-bar').style.width  = '4%';
+  document.getElementById('opt-running-label').textContent = 'Downloading historical data…';
+
+  const ohlc = await fetchXAUHistory();
+  if (!ohlc || ohlc.length < 50) {
+    optRunning = false;
+    setOptimizerState('ready');
+    alert('Could not fetch XAUUSD history. Check FMP connection.');
+    return;
+  }
+
+  // Build parameter grid
+  const combos = [];
+  for (const f of [5, 8, 10, 12, 15, 20])
+    for (const s of [30, 50, 100, 200]) {
+      if (f >= s) continue;
+      for (const rMin of [30, 35, 40])
+        for (const rMax of [60, 65, 70]) {
+          if (rMin >= rMax) continue;
+          for (const t of [0, 50, 200])
+            combos.push({ fastEma: f, slowEma: s, rsiMin: rMin, rsiMax: rMax, trendEma: t });
+        }
+    }
+  combos.sort(() => Math.random() - 0.5);
+  const total = Math.min(combos.length, 60);
+
+  let best = null, iter = 0;
+
+  const tick = () => {
+    if (!optRunning || iter >= total) {
+      optRunning = false;
+      if (best) {
+        updateOptimizerHeader(iter, best.sharpe);
+        renderOptimizerResults(best);
+        document.getElementById('opt-results-title').textContent = `Research Complete — Best of ${iter} iterations`;
+        setOptimizerState('results');
+      } else {
+        setOptimizerState('ready');
+      }
+      return;
+    }
+    const result = runBacktest(ohlc, combos[iter]);
+    iter++;
+    if (result && (!best || result.sharpe > best.sharpe)) best = result;
+    const pct = Math.round((iter / total) * 100);
+    document.getElementById('opt-progress-bar').style.width = pct + '%';
+    document.getElementById('opt-running-label').textContent =
+      `Iteration ${iter} / ${total} · Best Sharpe: ${best ? best.sharpe.toFixed(2) : '—'}`;
+    updateOptimizerHeader(iter, best ? best.sharpe : null);
+    setTimeout(tick, 0);
+  };
+  setTimeout(tick, 60);
+}
+
+// --- TradingView Chart Init ---
+
+function initOptimizerChart() {
+  if (typeof TradingView === 'undefined') return;
+  new TradingView.widget({
+    container_id: 'tradingview_opt_chart',
+    width: '100%',
+    height: '100%',
+    symbol: 'OANDA:XAUUSD',
+    interval: 'D',
+    timezone: 'America/New_York',
+    theme: 'dark',
+    style: '1',
+    locale: 'en',
+    toolbar_bg: '#0e0e1c',
+    backgroundColor: '#080810',
+    gridColor: 'rgba(30,30,58,0.5)',
+    enable_publishing: false,
+    hide_top_toolbar: false,
+    hide_side_toolbar: false,
+    allow_symbol_change: true,
+    studies: ['EMA@tv-basicstudies', 'RSI@tv-basicstudies'],
+    save_image: false,
+  });
+}
 </script>
+<script src="https://s3.tradingview.com/tv.js" onload="initOptimizerChart()"></script>
 </body>
 </html>
