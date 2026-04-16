@@ -241,6 +241,11 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
 .opt-research-item{font-size:10px;color:var(--muted);line-height:1.4}
 .opt-research-item a{color:var(--cyan);text-decoration:none}
 .opt-research-item a:hover{text-decoration:underline}
+.opt-research-item details{margin-top:4px}
+.opt-research-item summary{cursor:pointer;color:var(--cyan);font-size:9px;letter-spacing:.06em;text-transform:uppercase;user-select:none}
+.opt-research-item summary:hover{opacity:.8}
+.opt-research-markdown{margin-top:6px;padding:8px;background:rgba(255,255,255,.02);border-left:2px solid var(--cyan);border-radius:3px;max-height:260px;overflow-y:auto;font-size:10px;line-height:1.5;color:var(--text);white-space:pre-wrap}
+.opt-research-markdown-empty{font-style:italic;color:var(--muted)}
 .opt-chart-wrap{position:relative;padding:10px 16px 6px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--surface)}
 .opt-chart-label{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
 .opt-pf-canvas{width:100%;height:110px;display:block}
@@ -636,7 +641,7 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
             <button class="opt-sym-tab" onclick="selectOptSymbol('BTCUSD',this)">BTCUSD</button>
           </div>
 
-          <!-- Controls + Tavily key -->
+          <!-- Controls + Tavily / Firecrawl keys -->
           <div class="opt-controls-row">
             <button class="btn-research" id="btn-opt-start" onclick="startResearch()">▶ Start</button>
             <button class="btn-baseline" id="btn-opt-stop" onclick="stopResearch()" disabled>■ Stop</button>
@@ -644,6 +649,8 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
             <div style="flex:1"></div>
             <input id="tavily-key-input" class="api-input" type="password"
               placeholder="Tavily API Key (optional)" style="width:180px;font-size:10px"/>
+            <input id="firecrawl-key-input" class="api-input" type="password"
+              placeholder="Firecrawl API Key (optional)" style="width:180px;font-size:10px"/>
             <button onclick="runTavilyResearch()" class="btn-connect" style="font-size:10px;padding:5px 11px">
               🔍 Research
             </button>
@@ -726,6 +733,8 @@ const API_KEY   = 'sk_524569ce2cf217196514ae23cd02a0c890cb5963017dcbbe';
 const AGENT_ID  = 'agent_9101kp3xsh6tf1gs813edp1nqkwc';
 const FMP_KEY    = '3r9vq1WORcFNCxoL6OimVbTuUP4VpamD';
 const TAVILY_KEY = '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';
+const FIRECRAWL_KEY = 'fc-9944ff02fa154190b8e805e002939ff2';
+const FIRECRAWL_BASE = 'https://api.firecrawl.dev/v1';
 
 const OPT_FMP_SYMBOLS = { XAUUSD:'XAUUSD', US30:'DJI', NAS100:'IXIC', SPX:'SPX', BTCUSD:'BTCUSD' };
 const SYMBOL_QUERIES  = {
@@ -751,6 +760,7 @@ window.onload = () => {
   document.getElementById('conv-agent-id').value = AGENT_ID;
   document.getElementById('fmp-key-input').value    = FMP_KEY;
   document.getElementById('tavily-key-input').value = TAVILY_KEY;
+  document.getElementById('firecrawl-key-input').value = FIRECRAWL_KEY;
   connectAPI();
   startClock();
   buildTicker();
@@ -1250,6 +1260,12 @@ function buildLiveContext(now) {
   const timeStr = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
   const mkt = liveMarketData;
   const p   = livePerf;
+  const fcBlock = (latestFirecrawlContent && latestFirecrawlContent.length)
+    ? '\n\n## DEEP RESEARCH CONTEXT (scraped via Firecrawl)\n' +
+      latestFirecrawlContent.map(a =>
+        `### ${a.title}\nSource: ${a.url}\n${a.markdown.slice(0, 2000)}`
+      ).join('\n\n')
+    : '';
   return `You are Manny's personal AI trading assistant, deeply integrated into his Claude OS system.
 
 ## CURRENT SESSION — LIVE DATA
@@ -1285,7 +1301,7 @@ function buildLiveContext(now) {
 - Call him by name occasionally
 - Enforce his rules — push back on any FOMO or rule-breaking talk
 - Be his accountability partner, market analyst, and trading coach
-- You have full context of his system — speak as if you've been with him from day one`;
+- You have full context of his system — speak as if you've been with him from day one` + fcBlock;
 }
 
 // Update live market data (call this when you have fresh prices)
@@ -1558,6 +1574,7 @@ let optRunning   = false;
 let optSymbol    = 'XAUUSD';
 let optExpLog    = [];
 let optPFChart   = null;
+let latestFirecrawlContent = []; // [{url, title, markdown}] — consumed by buildLiveContext()
 
 // --- Technical Indicators ---
 
@@ -1896,6 +1913,21 @@ async function fetchTavilyResearch(query) {
   } catch (e) { return null; }
 }
 
+async function fetchFirecrawlScrape(url) {
+  const key = (document.getElementById('firecrawl-key-input')?.value || '').trim() || FIRECRAWL_KEY;
+  if (!key || !url) return null;
+  try {
+    const res = await fetch(`${FIRECRAWL_BASE}/scrape`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({ url, formats: ['markdown'], onlyMainContent: true, timeout: 15000 })
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    return j?.data?.markdown || null;
+  } catch (e) { return null; }
+}
+
 async function runTavilyResearch() {
   const bar    = document.getElementById('opt-research-bar');
   const ansEl  = document.getElementById('opt-research-answer');
@@ -1907,15 +1939,44 @@ async function runTavilyResearch() {
   const data  = await fetchTavilyResearch(query);
   if (!data) {
     ansEl.textContent = 'Add a Tavily API key above to enable AI market intelligence.';
+    latestFirecrawlContent = [];
     return;
   }
   ansEl.textContent = data.answer || 'No summary available.';
-  listEl.innerHTML  = (data.results || []).slice(0, 4).map(r =>
+  const results = (data.results || []).slice(0, 4);
+
+  // Render immediately with loading placeholders for scrapes
+  listEl.innerHTML = results.map((r, i) =>
     `<div class="opt-research-item">
        <a href="${r.url}" target="_blank" rel="noopener">${r.title}</a>
        <div>${(r.content || '').slice(0, 130)}…</div>
+       <details data-idx="${i}">
+         <summary>▸ Full Article</summary>
+         <div class="opt-research-markdown opt-research-markdown-empty" id="fc-md-${i}">Scraping…</div>
+       </details>
      </div>`
   ).join('');
+
+  // Pipeline: scrape top 2 URLs in parallel via Firecrawl
+  const scrapeTargets = results.slice(0, 2);
+  const scrapes = await Promise.all(scrapeTargets.map(r => fetchFirecrawlScrape(r.url)));
+
+  latestFirecrawlContent = [];
+  scrapes.forEach((md, i) => {
+    const el = document.getElementById(`fc-md-${i}`);
+    if (!el) return;
+    if (md) {
+      el.classList.remove('opt-research-markdown-empty');
+      el.textContent = md.slice(0, 8000);
+      latestFirecrawlContent.push({ url: scrapeTargets[i].url, title: scrapeTargets[i].title, markdown: md });
+    } else {
+      el.textContent = 'Scrape unavailable (add Firecrawl key or retry).';
+    }
+  });
+  for (let i = scrapeTargets.length; i < results.length; i++) {
+    const el = document.getElementById(`fc-md-${i}`);
+    if (el) el.textContent = 'Not scraped (only top 2 results are scraped).';
+  }
 }
 
 </script>
