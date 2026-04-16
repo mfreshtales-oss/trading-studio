@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Manny's Trading & Voice Studio</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -220,6 +221,51 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
   .trading-panel{max-height:50vh}
 }
 
+/* ── Optimizer / AutoResearch Tab ── */
+.opt-panel{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.opt-symbol-tabs{display:flex;gap:0;padding:0 16px;flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border)}
+.opt-sym-tab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-weight:700;padding:10px 14px;cursor:pointer;transition:color .15s,border-color .15s;letter-spacing:.04em}
+.opt-sym-tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+.opt-sym-tab:hover:not(.active){color:var(--text)}
+.opt-controls-row{display:flex;align-items:center;gap:8px;padding:8px 16px;flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border)}
+.opt-header-row{display:grid;grid-template-columns:repeat(4,1fr);flex-shrink:0;border-bottom:1px solid var(--border)}
+.opt-header-cell{padding:12px 16px;border-right:1px solid var(--border)}
+.opt-header-cell:last-child{border-right:none}
+.opt-header-label{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.opt-header-val{font-family:'SF Mono','Fira Code',monospace;font-size:22px;font-weight:900;color:var(--text);line-height:1}
+.opt-header-val.best{color:var(--cyan)}
+.opt-research-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 16px;flex-shrink:0}
+.opt-research-title{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);margin-bottom:5px}
+.opt-research-answer{font-size:11px;color:var(--text);line-height:1.6;margin-bottom:5px;max-height:68px;overflow-y:auto}
+.opt-research-list{display:flex;flex-direction:column;gap:3px}
+.opt-research-item{font-size:10px;color:var(--muted);line-height:1.4}
+.opt-research-item a{color:var(--cyan);text-decoration:none}
+.opt-research-item a:hover{text-decoration:underline}
+.opt-chart-wrap{position:relative;padding:10px 16px 6px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--surface)}
+.opt-chart-label{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.opt-pf-canvas{width:100%;height:110px;display:block}
+.opt-chart-empty{font-size:11px;color:var(--muted);text-align:center;padding:16px 0}
+.opt-params-section{padding:8px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.opt-section-label{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;display:flex;align-items:center;gap:8px}
+.opt-params-box{font-size:11px;font-family:'SF Mono','Fira Code',monospace;color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:7px 10px;line-height:1.7}
+.opt-params-box span{color:var(--cyan)}
+.opt-log-section{display:flex;flex-direction:column;flex:1;overflow:hidden;padding:8px 16px 12px}
+.opt-exp-count{font-size:9px;font-weight:400;color:var(--muted);margin-left:6px}
+.opt-log-wrap{flex:1;overflow-y:auto;margin-top:5px}
+.opt-log-wrap::-webkit-scrollbar{width:4px}
+.opt-log-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.opt-log-table{width:100%;border-collapse:collapse;font-size:10px}
+.opt-log-table th{text-align:left;padding:4px 8px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1}
+.opt-log-table td{padding:4px 8px;color:var(--text);border-bottom:1px solid rgba(255,255,255,.03);font-family:'SF Mono','Fira Code',monospace;font-size:10px}
+.opt-log-table tr.improved td{color:var(--cyan)}
+.opt-log-table tr.improved td:last-child{color:var(--green)}
+.btn-research{background:linear-gradient(135deg,#c026d3,#7c3aed);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:7px 18px;cursor:pointer;transition:all .2s}
+.btn-research:hover{opacity:.9;transform:translateY(-1px)}
+.btn-research:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-baseline{background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;font-weight:600;padding:7px 16px;cursor:pointer;transition:all .2s}
+.btn-baseline:hover:not(:disabled){border-color:var(--purple);color:var(--purple-lt)}
+.btn-baseline:disabled{opacity:.4;cursor:not-allowed}
+
 /* ── FMP Live Watchlist ── */
 .fmp-live-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.4)}
 .fmp-live-dot{width:5px;height:5px;border-radius:50%;background:var(--cyan);animation:pulse-green 2s ease-in-out infinite}
@@ -413,6 +459,7 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
       <button class="el-tab active" onclick="switchTab('tts',this)">🔊 Text to Speech</button>
       <button class="el-tab" onclick="switchTab('s2s',this)">🎙 Speech to Speech</button>
       <button class="el-tab" onclick="switchTab('conv',this)">🤖 Conversational AI</button>
+      <button class="el-tab" onclick="switchTab('optimizer',this)">📈 Optimizer</button>
     </div>
 
     <div class="el-content">
@@ -576,6 +623,98 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
         </div>
       </div>
 
+      <!-- ── AutoResearch / Optimizer ── -->
+      <div id="panel-optimizer" class="tab-panel" style="padding:0;margin:0">
+        <div class="opt-panel">
+
+          <!-- Symbol Tabs -->
+          <div class="opt-symbol-tabs">
+            <button class="opt-sym-tab active" onclick="selectOptSymbol('XAUUSD',this)">XAUUSD</button>
+            <button class="opt-sym-tab" onclick="selectOptSymbol('US30',this)">US30</button>
+            <button class="opt-sym-tab" onclick="selectOptSymbol('NAS100',this)">NAS100</button>
+            <button class="opt-sym-tab" onclick="selectOptSymbol('SPX',this)">SPX</button>
+            <button class="opt-sym-tab" onclick="selectOptSymbol('BTCUSD',this)">BTCUSD</button>
+          </div>
+
+          <!-- Controls + Tavily key -->
+          <div class="opt-controls-row">
+            <button class="btn-research" id="btn-opt-start" onclick="startResearch()">▶ Start</button>
+            <button class="btn-baseline" id="btn-opt-stop" onclick="stopResearch()" disabled>■ Stop</button>
+            <button class="btn-baseline" id="btn-opt-backtest" onclick="runBaselineBacktest()">⏵ Backtest</button>
+            <div style="flex:1"></div>
+            <input id="tavily-key-input" class="api-input" type="password"
+              placeholder="Tavily API Key (optional)" style="width:180px;font-size:10px"/>
+            <button onclick="runTavilyResearch()" class="btn-connect" style="font-size:10px;padding:5px 11px">
+              🔍 Research
+            </button>
+          </div>
+
+          <!-- Stats Header -->
+          <div class="opt-header-row">
+            <div class="opt-header-cell">
+              <div class="opt-header-label">Iterations</div>
+              <div class="opt-header-val" id="opt-iter-count">0</div>
+            </div>
+            <div class="opt-header-cell">
+              <div class="opt-header-label">Best Profit Factor</div>
+              <div class="opt-header-val best" id="opt-best-pf">0</div>
+            </div>
+            <div class="opt-header-cell">
+              <div class="opt-header-label">Best Win Rate</div>
+              <div class="opt-header-val" id="opt-best-wr">0%</div>
+            </div>
+            <div class="opt-header-cell">
+              <div class="opt-header-label">Best Total R</div>
+              <div class="opt-header-val" id="opt-best-r">0</div>
+            </div>
+          </div>
+
+          <!-- Tavily Market Intelligence -->
+          <div id="opt-research-bar" class="opt-research-bar" style="display:none">
+            <div class="opt-research-title">Market Intelligence</div>
+            <div id="opt-research-answer" class="opt-research-answer"></div>
+            <div id="opt-research-results" class="opt-research-list"></div>
+          </div>
+
+          <!-- Profit Factor Over Iterations Chart -->
+          <div class="opt-chart-wrap">
+            <div class="opt-chart-label">Profit Factor Over Iterations</div>
+            <canvas id="opt-pf-canvas" class="opt-pf-canvas"></canvas>
+            <div id="opt-chart-empty" class="opt-chart-empty">
+              No iterations yet. Start a research run or load existing results.
+            </div>
+          </div>
+
+          <!-- Best Strategy Parameters -->
+          <div class="opt-params-section">
+            <div class="opt-section-label">Best Strategy Parameters</div>
+            <div class="opt-params-box" id="opt-params-box">No results yet</div>
+          </div>
+
+          <!-- Experiment Log -->
+          <div class="opt-log-section">
+            <div class="opt-section-label">
+              Experiment Log
+              <span id="opt-exp-count" class="opt-exp-count">0 experiments</span>
+            </div>
+            <div class="opt-log-wrap">
+              <table class="opt-log-table">
+                <thead>
+                  <tr>
+                    <th>Iter</th><th>Profit Factor</th><th>Win Rate</th><th>Total R</th>
+                    <th>Trades</th><th>Drawdown</th><th>Sharpe</th><th>Improved</th>
+                  </tr>
+                </thead>
+                <tbody id="opt-log-body">
+                  <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:12px">No experiments</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
     </div><!-- /el-content -->
   </div><!-- /el-panel -->
 </div><!-- /main -->
@@ -585,7 +724,17 @@ audio{width:100%;border-radius:8px;outline:none;filter:invert(1) hue-rotate(180d
 const API_BASE  = 'https://api.elevenlabs.io/v1';
 const API_KEY   = 'sk_524569ce2cf217196514ae23cd02a0c890cb5963017dcbbe';
 const AGENT_ID  = 'agent_9101kp3xsh6tf1gs813edp1nqkwc';
-const FMP_KEY   = '3r9vq1WORcFNCxoL6OimVbTuUP4VpamD';
+const FMP_KEY    = '3r9vq1WORcFNCxoL6OimVbTuUP4VpamD';
+const TAVILY_KEY = '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';
+
+const OPT_FMP_SYMBOLS = { XAUUSD:'XAUUSD', US30:'DJI', NAS100:'IXIC', SPX:'SPX', BTCUSD:'BTCUSD' };
+const SYMBOL_QUERIES  = {
+  XAUUSD: 'Gold XAUUSD price technical analysis EMA crossover signals today',
+  US30:   'Dow Jones US30 technical analysis trend signals today',
+  NAS100: 'NASDAQ NAS100 technical analysis momentum signals today',
+  SPX:    'S&P 500 SPX technical analysis trend signals today',
+  BTCUSD: 'Bitcoin BTCUSD price technical analysis signals today'
+};
 
 // ── State ────────────────────────────────────────────────────────────────────
 let voices = [], currentApiKey = '';
@@ -600,7 +749,8 @@ let _ttsAudioCtx = null, _ttsAudioSource = null;
 window.onload = () => {
   document.getElementById('api-key-input').value = API_KEY;
   document.getElementById('conv-agent-id').value = AGENT_ID;
-  document.getElementById('fmp-key-input').value = FMP_KEY;
+  document.getElementById('fmp-key-input').value    = FMP_KEY;
+  document.getElementById('tavily-key-input').value = TAVILY_KEY;
   connectAPI();
   startClock();
   buildTicker();
@@ -642,6 +792,16 @@ function switchTab(id, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('panel-' + id).classList.add('active');
+  const elContent = document.querySelector('.el-content');
+  if (id === 'optimizer') {
+    elContent.style.padding = '0';
+    elContent.style.overflow = 'hidden';
+    // Init chart on first visit
+    requestAnimationFrame(() => { if (!optPFChart) initPFChart(); });
+  } else {
+    elContent.style.padding = '';
+    elContent.style.overflow = '';
+  }
 }
 
 // ── Connect API ───────────────────────────────────────────────────────────────
@@ -865,8 +1025,11 @@ async function startConversation() {
       addChatMsg('system','🟢 Connected — injecting live context…');
 
       // Inject fresh live context so agent knows real-time state
+      // Filter out empty lines to prevent empty text blocks being sent with
+      // cache_control to the Anthropic API, which rejects them with a 400 error.
       const now = new Date();
-      const dynamicContext = buildLiveContext(now);
+      const dynamicContext = buildLiveContext(now)
+        .split('\n').filter(line => line.trim() !== '').join('\n');
       convWs.send(JSON.stringify({
         type: 'conversation_initiation_client_data',
         conversation_config_override: {
@@ -901,11 +1064,21 @@ async function startConversation() {
         else if (d.type==='user_transcript') { const t=d.user_transcription_event?.user_transcript; if(t) addChatMsg('user',t); }
         else if (d.type==='interruption') { convQueue=[]; }
         else if (d.type==='ping') { convWs.send(JSON.stringify({type:'pong',event_id:d.ping_event?.event_id})); }
-      } catch {}
+        else if (d.type==='error') {
+          const msg = d.error?.message || d.message || JSON.stringify(d.error || d);
+          addChatMsg('system','⚠ Session error: ' + msg);
+          showErr(document.getElementById('conv-error'), msg);
+        }
+      } catch(parseErr) { addChatMsg('system','⚠ Unreadable message from agent'); }
     };
 
     convWs.onerror = () => { setConvStatus('error'); showErr(document.getElementById('conv-error'),'WebSocket error — verify Agent ID.'); };
-    convWs.onclose = () => { setConvStatus('idle'); addChatMsg('system','🔴 Session ended'); cleanupConv(); };
+    convWs.onclose = ev => {
+      setConvStatus('idle');
+      const reason = ev.reason ? ` — ${ev.reason}` : (ev.code && ev.code !== 1000 ? ` (code ${ev.code})` : '');
+      addChatMsg('system','🔴 Session ended' + reason);
+      cleanupConv();
+    };
   } catch(e) { setConvStatus('error'); showErr(document.getElementById('conv-error'), e.message); }
 }
 
@@ -1148,10 +1321,14 @@ async function refreshAgentContext() {
       if (btn) { btn.textContent = '✅ Agent Updated'; }
       setTimeout(() => { if (btn) { btn.textContent = '🔄 Refresh Agent'; btn.disabled = false; } }, 2000);
     } else {
-      if (btn) { btn.textContent = '⚠ Error'; btn.disabled = false; }
+      let detail = `HTTP ${res.status}`;
+      try { const body = await res.json(); detail = body?.detail?.message || body?.message || body?.error?.message || JSON.stringify(body); } catch {}
+      console.error('refreshAgentContext error:', detail);
+      if (btn) { btn.title = detail; btn.textContent = '⚠ Error'; btn.disabled = false; }
     }
   } catch(e) {
-    if (btn) { btn.textContent = '⚠ Error'; btn.disabled = false; }
+    console.error('refreshAgentContext exception:', e);
+    if (btn) { btn.title = e.message; btn.textContent = '⚠ Error'; btn.disabled = false; }
   }
 }
 
@@ -1374,6 +1551,373 @@ function updateBiasNotes(bySymbol, treasury) {
   if (notes.length === 0) return;
   biasEl.innerHTML = notes.map(n => `<div class="bias-item">${n}</div>`).join('');
 }
+
+// ── Optimizer ──────────────────────────────────────────────────────────────────
+
+let optRunning   = false;
+let optSymbol    = 'XAUUSD';
+let optExpLog    = [];
+let optPFChart   = null;
+
+// --- Technical Indicators ---
+
+function calcEMA(closes, period) {
+  const k = 2 / (period + 1);
+  const ema = new Array(closes.length).fill(null);
+  let sum = 0;
+  for (let i = 0; i < period; i++) sum += closes[i];
+  ema[period - 1] = sum / period;
+  for (let i = period; i < closes.length; i++) {
+    ema[i] = closes[i] * k + ema[i - 1] * (1 - k);
+  }
+  return ema;
+}
+
+function calcRSI(closes, period = 14) {
+  const rsi = new Array(closes.length).fill(null);
+  if (closes.length < period + 1) return rsi;
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d > 0) gains += d; else losses -= d;
+  }
+  let avgGain = gains / period, avgLoss = losses / period;
+  rsi[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    avgGain = (avgGain * (period - 1) + Math.max(d, 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(-d, 0)) / period;
+    rsi[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  }
+  return rsi;
+}
+
+// --- Backtest Engine ---
+// Returns: { winRate, sharpe, maxDrawdown, totalR, trades, wins, losses, params }
+// or null if too few trades
+
+function runBacktest(ohlc, params) {
+  const { fastEma, slowEma, rsiMin, rsiMax, trendEma } = params;
+  const closes = ohlc.map(d => d.close);
+  const fast  = calcEMA(closes, fastEma);
+  const slow  = calcEMA(closes, slowEma);
+  const rsi   = calcRSI(closes, 14);
+  const trend = trendEma > 0 ? calcEMA(closes, trendEma) : null;
+
+  let inTrade = false, entryPrice = 0;
+  let wins = 0, losses = 0, totalR = 0, maxDD = 0, peak = 0, equity = 0;
+  const returns = [];
+
+  for (let i = 1; i < ohlc.length; i++) {
+    if (fast[i] == null || slow[i] == null || rsi[i] == null) continue;
+    if (trend && trend[i] == null) continue;
+    const pf = fast[i - 1], ps = slow[i - 1];
+    if (pf == null || ps == null) continue;
+
+    const crossUp   = pf <= ps && fast[i] > slow[i];
+    const crossDown = pf >= ps && fast[i] < slow[i];
+    const rsiOk     = rsi[i] >= rsiMin && rsi[i] <= rsiMax;
+    const trendOk   = !trend || closes[i] > trend[i];
+
+    if (!inTrade && crossUp && rsiOk && trendOk) {
+      inTrade = true;
+      entryPrice = ohlc[i].open || closes[i];
+    } else if (inTrade && crossDown) {
+      const exit = ohlc[i].open || closes[i];
+      const r = (exit - entryPrice) / (entryPrice * 0.01);
+      totalR += r; equity += r;
+      if (equity > peak) peak = equity;
+      const dd = peak - equity;
+      if (dd > maxDD) maxDD = dd;
+      if (r > 0) wins++; else losses++;
+      returns.push(r);
+      inTrade = false;
+    }
+  }
+
+  const n = wins + losses;
+  if (n < 5) return null;
+  const winRate = wins / n;
+  const mean = totalR / n;
+  const variance = returns.reduce((s, r) => s + (r - mean) ** 2, 0) / n;
+  const sharpe = variance === 0 ? 0 : (mean / Math.sqrt(variance)) * Math.sqrt(252 / Math.max(ohlc.length / n, 1));
+  const grossWin  = returns.filter(r => r > 0).reduce((s, r) => s + r, 0);
+  const grossLoss = Math.abs(returns.filter(r => r < 0).reduce((s, r) => s + r, 0));
+  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? 99.9 : 0;
+
+  return { winRate, sharpe, maxDrawdown: maxDD, totalR, profitFactor, trades: n, wins, losses, params };
+}
+
+// --- FMP Historical OHLC Fetch ---
+
+async function fetchSymbolHistory(sym) {
+  if (!fmpApiKey) {
+    alert('FMP not connected. Please connect via the Markets button first.');
+    return null;
+  }
+  const fmpSym  = OPT_FMP_SYMBOLS[sym] || sym;
+  const to      = new Date();
+  const from    = new Date(); from.setFullYear(from.getFullYear() - 2);
+  const fromStr = from.toISOString().split('T')[0];
+  const toStr   = to.toISOString().split('T')[0];
+  try {
+    const res = await fetch(`${FMP_BASE}/historical-price-eod/full?symbol=${fmpSym}&from=${fromStr}&to=${toStr}&apikey=${fmpApiKey}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const hist = data.historicalStockList?.[0]?.historical || data.historical || [];
+    return hist
+      .filter(d => d.close > 0)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  } catch (e) {
+    console.error('History error:', e);
+    return null;
+  }
+}
+
+// --- Symbol Selection ---
+
+function selectOptSymbol(sym, btn) {
+  optSymbol = sym;
+  document.querySelectorAll('.opt-sym-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// --- Shared UI Helpers ---
+
+function setOptButtonState(running) {
+  document.getElementById('btn-opt-start').disabled    = running;
+  document.getElementById('btn-opt-stop').disabled     = !running;
+  document.getElementById('btn-opt-backtest').disabled = running;
+}
+
+function resetOptState() {
+  optExpLog = [];
+  clearExpLog();
+  resetPFChart();
+  updateOptStats(0, null);
+  renderBestParams(null);
+}
+
+function stopResearch() {
+  optRunning = false;
+  setOptButtonState(false);
+}
+
+// --- Chart.js: Profit Factor Over Iterations ---
+
+function initPFChart() {
+  if (optPFChart) return;
+  const ctx = document.getElementById('opt-pf-canvas').getContext('2d');
+  optPFChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'Profit Factor', data: [],
+      borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,.08)',
+      tension: 0.35, pointRadius: 2, pointBackgroundColor: '#22d3ee', fill: true }]},
+    options: {
+      animation: { duration: 200 },
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { mode: 'index', intersect: false,
+          callbacks: { label: ctx => ' PF: ' + ctx.parsed.y.toFixed(2) } } },
+      scales: {
+        x: { display: false },
+        y: { min: 0, grid: { color: 'rgba(255,255,255,.05)' },
+             ticks: { color: '#5a5a80', font: { size: 9 }, maxTicksLimit: 4 },
+             border: { color: 'rgba(255,255,255,.06)' } }
+      }
+    }
+  });
+}
+
+function updatePFChart(iter, pf) {
+  if (!optPFChart) initPFChart();
+  document.getElementById('opt-chart-empty').style.display = 'none';
+  optPFChart.data.labels.push(iter);
+  optPFChart.data.datasets[0].data.push(+pf.toFixed(3));
+  optPFChart.update('none');
+}
+
+function resetPFChart() {
+  if (optPFChart) {
+    optPFChart.data.labels = [];
+    optPFChart.data.datasets[0].data = [];
+    optPFChart.update();
+  }
+  document.getElementById('opt-chart-empty').style.display = 'block';
+}
+
+// --- Experiment Log ---
+
+function clearExpLog() {
+  document.getElementById('opt-log-body').innerHTML =
+    '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:12px">No experiments</td></tr>';
+  document.getElementById('opt-exp-count').textContent = '0 experiments';
+}
+
+function appendExpRow(row) {
+  const body = document.getElementById('opt-log-body');
+  if (optExpLog.length === 1) body.innerHTML = '';
+  document.getElementById('opt-exp-count').textContent = optExpLog.length + ' experiments';
+  body.insertAdjacentHTML('afterbegin',
+    `<tr class="${row.improved ? 'improved' : ''}">
+      <td>${row.iter}</td>
+      <td>${row.profitFactor.toFixed(2)}</td>
+      <td>${(row.winRate * 100).toFixed(1)}%</td>
+      <td>${row.totalR >= 0 ? '+' : ''}${row.totalR.toFixed(1)}</td>
+      <td>${row.trades}</td>
+      <td>${row.maxDrawdown.toFixed(1)}R</td>
+      <td>${row.sharpe.toFixed(2)}</td>
+      <td>${row.improved ? '✓' : ''}</td>
+    </tr>`
+  );
+}
+
+// --- Update Header Stats ---
+
+function updateOptStats(iter, best) {
+  document.getElementById('opt-iter-count').textContent = iter;
+  document.getElementById('opt-best-pf').textContent    = best ? best.profitFactor.toFixed(2) : '0';
+  document.getElementById('opt-best-wr').textContent    = best ? (best.winRate * 100).toFixed(1) + '%' : '0%';
+  document.getElementById('opt-best-r').textContent     = best ? (best.totalR >= 0 ? '+' : '') + best.totalR.toFixed(1) : '0';
+}
+
+// --- Render Best Params Box ---
+
+function renderBestParams(best) {
+  if (!best) { document.getElementById('opt-params-box').textContent = 'No results yet'; return; }
+  const p = best.params;
+  document.getElementById('opt-params-box').innerHTML =
+    `<span>Fast EMA</span> ${p.fastEma} · <span>Slow EMA</span> ${p.slowEma} · ` +
+    `<span>RSI</span> ${p.rsiMin}–${p.rsiMax} · <span>Trend EMA</span> ${p.trendEma > 0 ? p.trendEma : 'Off'}<br>` +
+    `<span>Profit Factor</span> ${best.profitFactor.toFixed(2)} · ` +
+    `<span>Win Rate</span> ${(best.winRate * 100).toFixed(1)}% · ` +
+    `<span>Sharpe</span> ${best.sharpe.toFixed(2)} · ` +
+    `<span>Trades</span> ${best.trades}`;
+}
+
+// --- Baseline Backtest ---
+
+async function runBaselineBacktest() {
+  if (optRunning) return;
+  optRunning = true;
+  setOptButtonState(true);
+  resetOptState();
+
+  const ohlc = await fetchSymbolHistory(optSymbol);
+  if (!ohlc || ohlc.length < 50) {
+    optRunning = false;
+    setOptButtonState(false);
+    alert(`Could not fetch ${optSymbol} history. Check FMP connection.`);
+    return;
+  }
+
+  const result = runBacktest(ohlc, { fastEma: 12, slowEma: 50, rsiMin: 40, rsiMax: 60, trendEma: 200 });
+  optRunning = false;
+  setOptButtonState(false);
+
+  if (!result) { alert('Baseline generated too few trades.'); return; }
+
+  const row = { ...result, iter: 1, improved: true };
+  optExpLog.push(row);
+  updateOptStats(1, result);
+  renderBestParams(result);
+  updatePFChart(1, result.profitFactor);
+  appendExpRow(row);
+}
+
+// --- Iterative Research Loop ---
+
+async function startResearch() {
+  if (optRunning) return;
+  optRunning = true;
+  setOptButtonState(true);
+  resetOptState();
+  runTavilyResearch();
+
+  const ohlc = await fetchSymbolHistory(optSymbol);
+  if (!ohlc || ohlc.length < 50) {
+    stopResearch();
+    alert(`Could not fetch ${optSymbol} history. Check FMP connection.`);
+    return;
+  }
+
+  const combos = [];
+  for (const f of [5, 8, 10, 12, 15, 20])
+    for (const s of [30, 50, 100, 200]) {
+      if (f >= s) continue;
+      for (const rMin of [30, 35, 40])
+        for (const rMax of [60, 65, 70]) {
+          if (rMin >= rMax) continue;
+          for (const t of [0, 50, 200])
+            combos.push({ fastEma: f, slowEma: s, rsiMin: rMin, rsiMax: rMax, trendEma: t });
+        }
+    }
+  combos.sort(() => Math.random() - 0.5);
+  const total = Math.min(combos.length, 60);
+
+  let best = null, iter = 0;
+
+  const tick = () => {
+    if (!optRunning || iter >= total) {
+      optRunning = false;
+      setOptButtonState(false);
+      renderBestParams(best);
+      return;
+    }
+    const result = runBacktest(ohlc, combos[iter]);
+    iter++;
+    const improved = result && (!best || result.profitFactor > best.profitFactor);
+    if (improved) best = result;
+    if (result) {
+      const row = { ...result, iter, improved };
+      optExpLog.push(row);
+      updatePFChart(iter, result.profitFactor);
+      appendExpRow(row);
+    }
+    updateOptStats(iter, best);
+    setTimeout(tick, 0);
+  };
+  setTimeout(tick, 60);
+}
+
+// --- Tavily Market Intelligence ---
+
+async function fetchTavilyResearch(query) {
+  const key = (document.getElementById('tavily-key-input')?.value || '').trim() || TAVILY_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: key, query, search_depth: 'basic', max_results: 5, include_answer: true })
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch (e) { return null; }
+}
+
+async function runTavilyResearch() {
+  const bar    = document.getElementById('opt-research-bar');
+  const ansEl  = document.getElementById('opt-research-answer');
+  const listEl = document.getElementById('opt-research-results');
+  ansEl.textContent  = 'Searching…';
+  listEl.innerHTML   = '';
+  bar.style.display  = 'block';
+  const query = SYMBOL_QUERIES[optSymbol] || (optSymbol + ' price technical analysis today');
+  const data  = await fetchTavilyResearch(query);
+  if (!data) {
+    ansEl.textContent = 'Add a Tavily API key above to enable AI market intelligence.';
+    return;
+  }
+  ansEl.textContent = data.answer || 'No summary available.';
+  listEl.innerHTML  = (data.results || []).slice(0, 4).map(r =>
+    `<div class="opt-research-item">
+       <a href="${r.url}" target="_blank" rel="noopener">${r.title}</a>
+       <div>${(r.content || '').slice(0, 130)}…</div>
+     </div>`
+  ).join('');
+}
+
 </script>
 </body>
 </html>
